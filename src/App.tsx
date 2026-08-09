@@ -203,7 +203,7 @@ export default function App() {
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const replyText = data.replyText || 'Ji, main samajh gaya hoon.';
       const actionType = data.actionType || 'none';
       const actionData = data.actionData || {};
