@@ -14,9 +14,13 @@ app.use(express.json({ limit: '10mb' }));
 // Lazy init for Gemini API
 let genAIClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
-  if (!genAIClient && process.env.GEMINI_API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
+    return null;
+  }
+  if (!genAIClient) {
     genAIClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
+      apiKey: apiKey.trim(),
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -26,6 +30,16 @@ function getGenAI(): GoogleGenAI | null {
   }
   return genAIClient;
 }
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  const ai = getGenAI();
+  res.json({
+    status: 'ok',
+    geminiConfigured: !!ai,
+    message: !!ai ? 'Gemini API is connected and configured.' : 'GEMINI_API_KEY is not configured in environment variables.',
+  });
+});
 
 // ---------------------------
 // 1. CHAT & COMMAND API
@@ -85,13 +99,13 @@ You MUST output valid JSON matching this schema:
     if (!ai) {
       // Fallback rule-based intelligence if GEMINI_API_KEY is not set yet
       const lower = message.toLowerCase();
-      let replyText = 'Aapka paigham mil gaya hai. (Note: Add GEMINI_API_KEY in secrets for full AI capability).';
+      let replyText = '⚠️ Gemini API key is not configured in server environment secrets. Showing offline assistant mode.';
       let actionType: any = 'none';
       let actionData: any = {};
 
       if (lower.includes('task') || lower.includes('yaad dila') || lower.includes('call karna') || lower.includes('baje')) {
         actionType = 'create_task';
-        replyText = `Ji ${userName}! Main ne aapke liye naya task create kar diya hai.`;
+        replyText = `Ji ${userName}! (Offline Mode) Main ne aapke liye task create kar diya hai. [Set GEMINI_API_KEY for real Gemini AI]`;
         actionData = {
           task: {
             title: message.replace(/task banao|yaad dila dena|baje/gi, '').trim() || 'New Reminder',
@@ -102,7 +116,7 @@ You MUST output valid JSON matching this schema:
         };
       } else if (lower.includes('memory') || lower.includes('yaad rakho')) {
         actionType = 'add_memory';
-        replyText = `Bilkul ${userName}, main ne ye baat memory mein save kar li hai.`;
+        replyText = `Bilkul ${userName}, main ne ye baat memory mein save kar li hai. [Set GEMINI_API_KEY for real Gemini AI]`;
         actionData = {
           memory: {
             key: 'User Preference',
@@ -112,7 +126,7 @@ You MUST output valid JSON matching this schema:
         };
       } else if (lower.includes('whatsapp') || lower.includes('bolo ke') || lower.includes('message')) {
         actionType = 'whatsapp_draft';
-        replyText = `Main ne WhatsApp message ka draft taiyar kar liya hai. Aap preview dekh kar send kar sakte hain.`;
+        replyText = `Main ne WhatsApp message ka draft taiyar kar liya hai. [Set GEMINI_API_KEY for real Gemini AI]`;
         actionData = {
           whatsapp: {
             recipientName: lower.includes('ali') ? 'Ali' : lower.includes('ahmed') ? 'Ahmed' : 'Contact',
@@ -120,12 +134,12 @@ You MUST output valid JSON matching this schema:
           },
         };
       } else if (lower.includes('english')) {
-        replyText = `Sure ${userName}! I will respond in English. How can I assist you today with your tasks or memories?`;
+        replyText = `Sure ${userName}! I will respond in English. Note: Please configure GEMINI_API_KEY in server secrets for full Gemini AI responses.`;
       } else {
-        replyText = `Ji ${userName}! Main Hamza AI hoon. Aap tasks bana sakte hain, memory check kar sakte hain, ya WhatsApp drafts generate kar sakte hain. Aap kya karna chahte hain?`;
+        replyText = `Ji ${userName}! Main Hamza AI hoon. ⚠️ Server par GEMINI_API_KEY configured nahi hai. Direct Gemini AI response ke liye environment variables mein GEMINI_API_KEY add karein.`;
       }
 
-      return res.json({ replyText, actionType, actionData });
+      return res.json({ replyText, actionType, actionData, apiNotConfigured: true });
     }
 
     // Call Gemini 3.6 Flash
@@ -194,7 +208,7 @@ You MUST output valid JSON matching this schema:
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
     res.status(500).json({
-      replyText: 'Maaf kijiyega, paigham process karne mein issue aaya hai. Dobara koshish karein.',
+      replyText: `⚠️ Gemini API Error: ${error.message || 'Unable to connect to Gemini API'}. Please check your server GEMINI_API_KEY configuration.`,
       actionType: 'none',
       error: error.message,
     });
