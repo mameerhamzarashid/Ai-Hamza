@@ -63,15 +63,26 @@ Current date: ${todayStr}, Current time: ${currentTimeStr}.
 User preferred language setting: ${languagePreference}.
 
 CRITICAL BEHAVIOR RULES:
-1. Default Response Language: Always respond in natural Roman Urdu (e.g. "Ji Hamza! Main ne task add kar diya hai.") UNLESS the user explicitly writes in English or asks for an English response ("English mein jawab do").
+1. Default Response Language: Always respond in natural Roman Urdu (e.g. "Ji Hamza! Main ne WhatsApp message draft kar diya hai.") UNLESS the user explicitly writes in English or asks for an English response ("English mein jawab do").
 2. Intent Understanding: Understand informal phrases, typos, spelling errors, and mixed Roman Urdu/English commands.
-3. Scope & Truthfulness: Never pretend you executed external physical actions (like actually sending a real SMS or WhatsApp) if no API key is connected. For WhatsApp requests, clearly create a preview draft and offer to open/edit it.
+3. Scope & Truthfulness: Never claim that the message was sent automatically. Always state that you prepared a draft and offer the user to edit or click "Open WhatsApp".
 4. Structured Actions: You can trigger 4 types of actions by returning them in the structured JSON response:
-   - 'create_task': when the user wants to set a reminder or task (e.g. "Ali ko call karna hai", "Kal 5 baje meeting yaad dila dena").
-   - 'complete_task': when the user wants to complete or check off a task (e.g. "Ahmed wali task complete kar do", "Task finished").
+   - 'create_task': when the user wants to set a reminder or task (e.g. "Ali ko call karna hai", "Kal 5 baje meeting").
+   - 'complete_task': when the user wants to complete or check off a task (e.g. "Ahmed wali task complete kar do").
    - 'add_memory': when the user wants you to remember a personal detail, contact info, goal, or preference.
-   - 'whatsapp_draft': when the user asks to send/draft a message to someone on WhatsApp (e.g. "Ali ko WhatsApp par bolo ke meeting kal hai").
+   - 'whatsapp_draft': when the user asks to write, draft, or compose a message/reply for WhatsApp (e.g. "WhatsApp message banao", "Isko message likho", "Client ko reply do", "Ali ko WhatsApp par bolo ke meeting kal hai").
    - 'none': general conversation, Q&A, formatting, or guidance.
+
+For WHATSAPP_DRAFT actions:
+Formulate a polite, professional, and context-appropriate WhatsApp message text based on recipient and purpose.
+Example JSON actionData:
+{
+  "whatsapp": {
+    "recipientName": "Client",
+    "phone": "",
+    "messageText": "Hello! Thank you for contacting us. We have received your request..."
+  }
+}
 
 CURRENT SAVED MEMORIES OF USER:
 ${memories.map((m: any) => `- ${m.key}: ${m.value}`).join('\n')}
@@ -88,7 +99,7 @@ You MUST output valid JSON matching this schema:
     "task": { "title": "...", "notes": "...", "priority": "high"|"medium"|"low", "dueDate": "YYYY-MM-DD", "dueTime": "HH:mm" },
     "targetTaskId": "id_if_completing_existing_task",
     "memory": { "key": "...", "value": "...", "category": "personal"|"preference"|"contact"|"project"|"goal" },
-    "whatsapp": { "recipientName": "...", "messageText": "..." }
+    "whatsapp": { "recipientName": "...", "phone": "...", "messageText": "..." }
   }
 }
 `;
@@ -120,13 +131,17 @@ You MUST output valid JSON matching this schema:
                 category: 'preference',
               },
             };
-          } else if (lower.includes('whatsapp') || lower.includes('bolo ke') || lower.includes('message')) {
+          } else if (lower.includes('whatsapp') || lower.includes('message banao') || lower.includes('message likho') || lower.includes('reply do') || lower.includes('ko message') || lower.includes('bolo ke') || lower.includes('draft')) {
             actionType = 'whatsapp_draft';
-            replyText = `Main ne WhatsApp message ka draft taiyar kar liya hai. [Set GEMINI_API_KEY in Cloudflare Workers secrets]`;
+            const recipient = lower.includes('ali') ? 'Ali' : lower.includes('ahmed') ? 'Ahmed' : lower.includes('client') ? 'Client' : 'Recipient';
+            replyText = `Main ne ${recipient} ke liye WhatsApp message ka draft taiyar kar liya hai. Aap neeche message preview dekh kar 'Open WhatsApp' button daba kar message bhej sakte hain.`;
             actionData = {
               whatsapp: {
-                recipientName: lower.includes('ali') ? 'Ali' : lower.includes('ahmed') ? 'Ahmed' : 'Contact',
-                messageText: message,
+                recipientName: recipient,
+                phone: '',
+                messageText: lower.includes('client')
+                  ? 'Hello! Thank you for reaching out. We have received your request and will get back to you shortly with the details.'
+                  : `Assalam-o-Alaikum ${recipient}, umeed hai aap khairiyat se honge. ${message}`,
               },
             };
           } else if (lower.includes('english')) {
