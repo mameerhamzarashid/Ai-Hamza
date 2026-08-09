@@ -1,0 +1,6 @@
+{
+  "name": "Hamza AI",
+  "description": "Mobile-first Personal AI Assistant with Roman Urdu & English natural language understanding, smart task management, memory tracking, and tool draft previews.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
