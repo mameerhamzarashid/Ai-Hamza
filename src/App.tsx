@@ -8,6 +8,7 @@ import { BottomNav } from './components/BottomNav';
 import { Toast, ToastMessage } from './components/Toast';
 import { WhatsAppModal } from './components/WhatsAppModal';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { LiveVoiceModal } from './components/LiveVoiceModal';
 import { HomeView } from './components/HomeView';
 import { CreateView } from './components/CreateView';
 import { ChatView } from './components/ChatView';
@@ -32,6 +33,44 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [activeWhatsAppModalDraft, setActiveWhatsAppModalDraft] = useState<WhatsAppDraft | null>(null);
+  const [isLiveVoiceOpen, setIsLiveVoiceOpen] = useState(false);
+
+  const handleAddChatMessageFromVoice = (msg: { sender: 'user' | 'assistant'; text: string }) => {
+    setConversations((prev) => {
+      let activeId = activeConversationId;
+      let list = [...prev];
+
+      if (!activeId || !list.find((c) => c.id === activeId)) {
+        const newConv: Conversation = {
+          id: `conv_${Date.now()}`,
+          title: msg.text.slice(0, 30) || 'Voice Session',
+          createdAt: new Date().toISOString(),
+          lastMessageAt: new Date().toISOString(),
+          messages: [],
+        };
+        list.unshift(newConv);
+        activeId = newConv.id;
+        setActiveConversationId(activeId);
+      }
+
+      return list.map((c) => {
+        if (c.id === activeId) {
+          const newMessage: Message = {
+            id: `msg_${Date.now()}_${Math.random()}`,
+            sender: msg.sender,
+            text: msg.text,
+            timestamp: new Date().toISOString(),
+          };
+          return {
+            ...c,
+            messages: [...c.messages, newMessage],
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return c;
+      });
+    });
+  };
 
   // Sync state changes to storage
   useEffect(() => {
@@ -383,6 +422,7 @@ export default function App() {
         onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
         onNewChat={handleNewConversation}
         onToggleHistoryDrawer={() => setShowHistoryDrawer(!showHistoryDrawer)}
+        onOpenLiveVoice={() => setIsLiveVoiceOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -404,6 +444,7 @@ export default function App() {
               onSelectConversation={setActiveConversationId}
               tasks={tasks}
               memories={memories}
+              onOpenLiveVoice={() => setIsLiveVoiceOpen(true)}
             />
           )}
 
@@ -434,6 +475,7 @@ export default function App() {
               showHistoryDrawer={showHistoryDrawer}
               onCloseHistoryDrawer={() => setShowHistoryDrawer(false)}
               onConfirmSensitiveAction={handleConfirmSensitiveAction}
+              onOpenLiveVoice={() => setIsLiveVoiceOpen(true)}
             />
           )}
 
@@ -480,6 +522,14 @@ export default function App() {
         draft={activeWhatsAppModalDraft}
         onClose={() => setActiveWhatsAppModalDraft(null)}
         onSendConfirm={handleSendWhatsAppConfirm}
+      />
+
+      {/* Gemini Live Voice Modal */}
+      <LiveVoiceModal
+        isOpen={isLiveVoiceOpen}
+        onClose={() => setIsLiveVoiceOpen(false)}
+        onAddChatMessage={handleAddChatMessageFromVoice}
+        userName={settings.userName || 'Hamza'}
       />
 
       {/* Toast Notifications */}

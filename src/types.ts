@@ -60,6 +60,8 @@ export type ActionType =
   | 'whatsapp_draft'
   | 'email_draft'
   | 'web_search'
+  | 'generate_image'
+  | 'generate_video'
   | 'multi_step_workflow'
   | 'confirmation_required'
   | 'toggle_setting';
@@ -81,6 +83,12 @@ export interface MessageActionData {
   targetTaskId?: string;
   targetMemoryId?: string;
   workflowSummary?: string;
+  mediaPrompt?: string;
+  mediaType?: 'image' | 'video';
+  mediaUrl?: string;
+  thumbnailUrl?: string;
+  aspectRatio?: string;
+  style?: string;
 }
 
 export interface Message {

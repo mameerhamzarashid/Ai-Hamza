@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Send, Mic, Paperclip, Image as ImageIcon, Sparkles, Volume2, VolumeX,
   CheckCircle2, Brain, MessageSquare, FileText,
-  Clock, ArrowRight, Zap, CheckSquare, Copy, RotateCcw, X, Trash2, Check, Search, Mail, Film
+  Clock, ArrowRight, Zap, CheckSquare, Copy, RotateCcw, X, Trash2, Check, Search, Mail, Film, Radio
 } from 'lucide-react';
 import { Message, Conversation, Task, Memory, WhatsAppDraft, UserSettings, NavTab } from '../types';
 import { SpeechHelper } from '../utils/voice';
@@ -11,6 +11,7 @@ import { WhatsAppCard } from './WhatsAppCard';
 import { EmailCard } from './EmailCard';
 import { WebSearchCard } from './WebSearchCard';
 import { ConfirmationCard } from './ConfirmationCard';
+import { MediaCard } from './MediaCard';
 import { CygnusLogo } from './CygnusLogo';
 
 interface ChatViewProps {
@@ -29,6 +30,7 @@ interface ChatViewProps {
   showHistoryDrawer: boolean;
   onCloseHistoryDrawer: () => void;
   onConfirmSensitiveAction?: (msgId: string, actionData: any) => void;
+  onOpenLiveVoice?: () => void;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -47,10 +49,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   showHistoryDrawer,
   onCloseHistoryDrawer,
   onConfirmSensitiveAction,
+  onOpenLiveVoice,
 }) => {
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [isHandsFree, setIsHandsFree] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
@@ -64,6 +68,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isGenerating]);
+
+  // Auto-speak response if hands-free is enabled
+  useEffect(() => {
+    if (isHandsFree && messages.length > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.sender === 'assistant' && lastMsg.id !== speakingMsgId) {
+        setSpeakingMsgId(lastMsg.id);
+        SpeechHelper.speak(
+          lastMsg.text,
+          'en-US',
+          () => {},
+          () => setSpeakingMsgId(null)
+        );
+      }
+    }
+  }, [messages, isHandsFree]);
 
   // Auto-expand textarea
   useEffect(() => {
@@ -114,7 +134,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setSpeakingMsgId(null);
     } else {
       setSpeakingMsgId(msgId);
-      SpeechHelper.speak(text);
+      SpeechHelper.speak(
+        text,
+        'en-US',
+        () => setSpeakingMsgId(msgId),
+        () => setSpeakingMsgId(null)
+      );
     }
   };
 
@@ -133,8 +158,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const quickChips = [
-    { label: 'Create Image', icon: <ImageIcon className="w-3 h-3 text-purple-400" />, tab: 'create' as NavTab },
-    { label: 'Create Video', icon: <Film className="w-3 h-3 text-indigo-400" />, tab: 'create' as NavTab },
+    { label: 'Generate Image', icon: <ImageIcon className="w-3 h-3 text-purple-400" />, prompt: 'Generate an image of ' },
+    { label: 'Create Video', icon: <Film className="w-3 h-3 text-indigo-400" />, prompt: 'Create a video clip of ' },
     { label: 'Search Web', icon: <Search className="w-3 h-3 text-cyan-400" />, prompt: 'Search the web for ' },
     { label: 'WhatsApp', icon: <MessageSquare className="w-3 h-3 text-emerald-400" />, prompt: 'Draft a WhatsApp message to ' },
     { label: 'Tasks', icon: <CheckSquare className="w-3 h-3 text-amber-400" />, tab: 'tasks' as NavTab },
@@ -276,6 +301,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     }`}
                   >
                     {msg.text}
+
+                    {/* Media Card (Image / Video) */}
+                    {!isUser && (msg.actionType === 'generate_image' || msg.actionType === 'generate_video' || msg.actionData?.mediaUrl) && (
+                      <MediaCard
+                        mediaUrl={
+                          msg.actionData?.mediaUrl ||
+                          `https://image.pollinations.ai/prompt/${encodeURIComponent(
+                            msg.actionData?.mediaPrompt || msg.text
+                          )}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 10000)}&model=flux`
+                        }
+                        mediaType={
+                          msg.actionData?.mediaType || (msg.actionType === 'generate_video' ? 'video' : 'image')
+                        }
+                        prompt={msg.actionData?.mediaPrompt || msg.text}
+                        style={msg.actionData?.style || 'Cinematic 8K'}
+                        aspectRatio={msg.actionData?.aspectRatio || '16:9'}
+                        onRegenerate={() => {
+                          onSendMessage(
+                            `Regenerate ${msg.actionData?.mediaType || 'media'} for: "${msg.actionData?.mediaPrompt || msg.text}"`
+                          );
+                        }}
+                      />
+                    )}
 
                     {/* WhatsApp Action Card */}
                     {!isUser && msg.actionType === 'whatsapp_draft' && msg.actionData?.whatsapp && (
@@ -469,18 +517,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <Paperclip className="w-4 h-4" />
         </button>
 
-        {/* Voice Button */}
-        <button
-          onClick={toggleMic}
-          className={`p-2.5 rounded-xl transition-all shrink-0 ${
-            isListening
-              ? 'bg-rose-500 text-white animate-pulse shadow-md shadow-rose-500/30'
-              : 'text-slate-400 hover:text-cyan-400 hover:bg-slate-800'
-          }`}
-          title={isListening ? 'Listening...' : 'Voice input'}
-        >
-          <Mic className="w-4 h-4" />
-        </button>
+        {/* Voice Button & Hands-Free / Live Toggle */}
+        <div className="flex items-center gap-1 shrink-0">
+          {onOpenLiveVoice && (
+            <button
+              onClick={onOpenLiveVoice}
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold flex items-center gap-1 transition-all shadow-xs"
+              title="Start Gemini Live Real-time Voice Conversation"
+            >
+              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="hidden xs:inline">CYGNUS LIVE</span>
+            </button>
+          )}
+
+          <button
+            onClick={toggleMic}
+            className={`p-2.5 rounded-xl transition-all ${
+              isListening
+                ? 'bg-rose-500 text-white animate-pulse shadow-md shadow-rose-500/30'
+                : 'text-slate-400 hover:text-cyan-400 hover:bg-slate-800'
+            }`}
+            title={isListening ? 'Listening... Click to stop' : 'Voice speech input'}
+          >
+            <Mic className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* Quick Image Mode Switcher Button */}
         <button

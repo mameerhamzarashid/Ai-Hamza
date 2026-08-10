@@ -5,6 +5,7 @@ import {
   Copy, RefreshCw, Wand2, Check, ArrowRight, Play, Ratio
 } from 'lucide-react';
 import { CygnusLogo } from './CygnusLogo';
+import { MediaCard } from './MediaCard';
 import { NavTab } from '../types';
 
 interface CreateViewProps {
@@ -73,42 +74,55 @@ export const CreateView: React.FC<CreateViewProps> = ({ onSendToChat, onNavigate
     },
   ];
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
 
     setIsGenerating(true);
-    setProgress(10);
+    setProgress(15);
 
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
+        if (prev >= 90) return 90;
         return prev + 15;
       });
-    }, 250);
+    }, 200);
 
-    setTimeout(() => {
+    try {
+      const endpoint = activeMode === 'video' ? '/api/generate-video' : '/api/generate-image';
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, style, aspectRatio }),
+      });
+      const data = (await response.json()) as any;
+
       clearInterval(interval);
       setProgress(100);
       setIsGenerating(false);
 
-      const isVideo = activeMode === 'video';
-      const sampleUrl = isVideo
-        ? 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=1000&q=80'
-        : style.includes('Cyberpunk')
-        ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80'
-        : 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?auto=format&fit=crop&w=1000&q=80';
-
+      if (data.url) {
+        setGeneratedAsset({
+          type: activeMode,
+          url: data.url,
+          prompt,
+          aspectRatio,
+          style,
+        });
+      }
+    } catch (err) {
+      clearInterval(interval);
+      setIsGenerating(false);
+      // Fallback Pollinations direct
+      const seed = Math.floor(Math.random() * 100000);
+      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt + ', ' + style)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
       setGeneratedAsset({
         type: activeMode,
-        url: sampleUrl,
+        url,
         prompt,
         aspectRatio,
         style,
       });
-    }, 2200);
+    }
   };
 
   const handleCopyPrompt = (text: string) => {
@@ -282,74 +296,28 @@ export const CreateView: React.FC<CreateViewProps> = ({ onSendToChat, onNavigate
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="p-5 rounded-2xl bg-slate-900/90 border border-purple-500/30 shadow-2xl backdrop-blur-xl space-y-4"
+            className="space-y-3"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                <span className="text-xs font-bold text-white font-mono uppercase">
-                  {generatedAsset.type} Ready
-                </span>
-                <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                  {generatedAsset.style}
-                </span>
-              </div>
+            <MediaCard
+              mediaUrl={generatedAsset.url}
+              mediaType={generatedAsset.type}
+              prompt={generatedAsset.prompt}
+              style={generatedAsset.style}
+              aspectRatio={generatedAsset.aspectRatio}
+              onRegenerate={handleGenerate}
+            />
 
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => handleCopyPrompt(generatedAsset.prompt)}
-                  className="p-1.5 rounded-lg bg-slate-950 text-slate-400 hover:text-white border border-slate-800 transition-colors"
-                  title="Copy Prompt"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Asset Display */}
-            <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group">
-              <img
-                src={generatedAsset.url}
-                alt={generatedAsset.prompt}
-                className="w-full object-cover max-h-96 rounded-xl"
-              />
-              {generatedAsset.type === 'video' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs">
-                  <div className="p-4 rounded-full bg-indigo-600/80 text-white border border-indigo-400/50 shadow-xl">
-                    <Play className="w-8 h-8 fill-current ml-1" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Prompt details */}
-            <p className="text-xs text-slate-300 italic bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-              "{generatedAsset.prompt}"
-            </p>
-
-            {/* Action Bar */}
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center justify-end">
               <button
                 onClick={() => {
-                  onSendToChat(`I generated an ${generatedAsset.type} with prompt: "${generatedAsset.prompt}". Can you analyze or refine this idea?`);
+                  onSendToChat(`I generated a ${generatedAsset.type} with prompt: "${generatedAsset.prompt}". Can you analyze or refine this concept?`);
                   onNavigate('chat');
                 }}
-                className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium text-xs flex items-center gap-1.5 transition-colors border border-slate-700"
               >
                 <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Discuss in Chat</span>
               </button>
-
-              <a
-                href={generatedAsset.url}
-                target="_blank"
-                rel="noreferrer"
-                download="cygnus-creation.jpg"
-                className="py-2 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md shadow-purple-600/20"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download</span>
-              </a>
             </div>
           </motion.div>
         )}

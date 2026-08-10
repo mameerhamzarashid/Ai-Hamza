@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Plus, History, Smartphone, Monitor, Sparkles } from 'lucide-react';
+import { Sun, Moon, Plus, History, Smartphone, Monitor, Radio } from 'lucide-react';
 import { UserSettings } from '../types';
 import { CygnusLogo } from './CygnusLogo';
 
@@ -10,6 +10,7 @@ interface HeaderProps {
   onToggleMobileFrame: () => void;
   onNewChat: () => void;
   onToggleHistoryDrawer: () => void;
+  onOpenLiveVoice?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMobileFrame,
   onNewChat,
   onToggleHistoryDrawer,
+  onOpenLiveVoice,
 }) => {
   const toggleTheme = () => {
     const nextTheme = settings.theme === 'dark' ? 'light' : 'dark';
@@ -54,6 +56,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right: New Chat & Actions */}
         <div className="flex items-center gap-1.5">
+          {onOpenLiveVoice && (
+            <button
+              onClick={onOpenLiveVoice}
+              className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs hover:border-cyan-400"
+              title="Open Gemini Live Real-Time Voice Mode"
+            >
+              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="hidden sm:inline font-mono text-[11px]">LIVE VOICE</span>
+            </button>
+          )}
+
           <button
             onClick={onNewChat}
             className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 active:scale-95"

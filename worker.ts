@@ -195,6 +195,46 @@ Support Roman Urdu, Urdu, Hindi, and English naturally based on user language.
     }
 
     // ---------------------------
+    // LIVE TOKEN API FOR GEMINI LIVE
+    // ---------------------------
+    if (url.pathname === '/api/live-token' && request.method === 'POST') {
+      try {
+        const ai = getGenAI(env);
+        if (!ai) {
+          return new Response(
+            JSON.stringify({
+              error: 'GEMINI_API_KEY secret is not configured in Cloudflare Worker environment',
+              missingConfig: 'GEMINI_API_KEY',
+            }),
+            { status: 500, headers: corsHeaders }
+          );
+        }
+
+        const tokenObj = await ai.authTokens.create({
+          config: {
+            uses: 20,
+            expireTime: new Date(Date.now() + 600 * 1000).toISOString(),
+          },
+        });
+
+        return new Response(
+          JSON.stringify({
+            token: tokenObj.name,
+            success: true,
+          }),
+          { headers: corsHeaders }
+        );
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({
+            error: err.message || 'Failed to create Gemini Live ephemeral token',
+          }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // ---------------------------
     // 1. CHAT API
     // ---------------------------
     if (url.pathname === '/api/chat' && request.method === 'POST') {

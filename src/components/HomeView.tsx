@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   Sparkles, Image, Film, Globe, MessageSquare, CheckSquare, 
-  ArrowRight, Search, Zap, Clock, ChevronRight
+  ArrowRight, Search, Zap, Clock, ChevronRight, Radio
 } from 'lucide-react';
 import { CygnusLogo } from './CygnusLogo';
 import { NavTab, Conversation, Task, Memory } from '../types';
@@ -16,6 +16,7 @@ interface HomeViewProps {
   onSelectConversation: (id: string) => void;
   tasks: Task[];
   memories: Memory[];
+  onOpenLiveVoice?: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -26,6 +27,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onSelectConversation,
   tasks,
   memories,
+  onOpenLiveVoice,
 }) => {
   const [quickInput, setQuickInput] = useState('');
 
@@ -109,7 +111,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.6, ease: 'out' }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
           className="relative mb-6"
         >
           {/* Ambient Glow */}
@@ -122,7 +124,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           initial={{ y: 15, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="space-y-2 mb-8"
+          className="space-y-2 mb-6"
         >
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white font-sans">
             Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">Cygnus</span>
@@ -130,6 +132,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <p className="text-sm sm:text-base text-slate-400 max-w-md mx-auto font-medium">
             Your intelligent personal AI.
           </p>
+
+          {onOpenLiveVoice && (
+            <div className="pt-2">
+              <button
+                onClick={onOpenLiveVoice}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 via-indigo-500/20 to-purple-500/20 border border-cyan-500/40 text-cyan-300 hover:text-white font-mono font-bold text-xs shadow-lg shadow-cyan-500/10 hover:border-cyan-400 transition-all hover:scale-105"
+              >
+                <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span>CYGNUS REAL-TIME LIVE VOICE MODE</span>
+              </button>
+            </div>
+          )}
         </motion.div>
 
         {/* Immediate Input Bar */}
