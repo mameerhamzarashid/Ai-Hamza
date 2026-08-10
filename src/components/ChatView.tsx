@@ -2,11 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Send, Mic, Paperclip, Terminal, Volume2, VolumeX,
   CheckCircle2, Brain, MessageSquare, FileText,
-  Clock, ArrowRight, Zap, CheckSquare, Copy, RotateCcw, X, Trash2, Check, Search, ShieldCheck
+  Clock, ArrowRight, Zap, CheckSquare, Copy, RotateCcw, X, Trash2, Check, Search, Mail
 } from 'lucide-react';
 import { Message, Conversation, Task, Memory, WhatsAppDraft, UserSettings, NavTab } from '../types';
 import { SpeechHelper } from '../utils/voice';
 import { WhatsAppCard } from './WhatsAppCard';
+import { EmailCard } from './EmailCard';
+import { WebSearchCard } from './WebSearchCard';
+import { ConfirmationCard } from './ConfirmationCard';
 
 interface ChatViewProps {
   conversations: Conversation[];
@@ -23,6 +26,7 @@ interface ChatViewProps {
   settings: UserSettings;
   showHistoryDrawer: boolean;
   onCloseHistoryDrawer: () => void;
+  onConfirmSensitiveAction?: (msgId: string, actionData: any) => void;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -40,6 +44,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   settings,
   showHistoryDrawer,
   onCloseHistoryDrawer,
+  onConfirmSensitiveAction,
 }) => {
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -305,6 +310,38 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     {!isUser && msg.actionType === 'whatsapp_draft' && msg.actionData?.whatsapp && (
                       <div className="mt-3">
                         <WhatsAppCard draft={msg.actionData.whatsapp} />
+                      </div>
+                    )}
+
+                    {/* Compact Email Action Card */}
+                    {!isUser && msg.actionType === 'email_draft' && msg.actionData?.email && (
+                      <div className="mt-3">
+                        <EmailCard draft={msg.actionData.email} />
+                      </div>
+                    )}
+
+                    {/* Compact Web Search Grounding Card */}
+                    {!isUser && msg.actionType === 'web_search' && (
+                      <div className="mt-3">
+                        <WebSearchCard
+                          query={msg.actionData?.searchQuery}
+                          summary={msg.actionData?.workflowSummary}
+                        />
+                      </div>
+                    )}
+
+                    {/* Compact Confirmation Card */}
+                    {!isUser && msg.actionType === 'confirmation_required' && msg.actionData?.confirmation && (
+                      <div className="mt-3">
+                        <ConfirmationCard
+                          confirmation={msg.actionData.confirmation}
+                          onConfirm={() => {
+                            if (onConfirmSensitiveAction) {
+                              onConfirmSensitiveAction(msg.id, msg.actionData);
+                            }
+                          }}
+                          onCancel={() => {}}
+                        />
                       </div>
                     )}
 

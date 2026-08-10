@@ -1,5 +1,6 @@
 export type Priority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'pending' | 'completed';
+export type RecurringFrequency = 'none' | 'daily' | 'weekly' | 'monthly';
 
 export interface Task {
   id: string;
@@ -10,6 +11,7 @@ export interface Task {
   dueTime?: string; // HH:mm
   status: TaskStatus;
   category?: string;
+  recurring?: RecurringFrequency;
   createdAt: string;
 }
 
@@ -33,20 +35,52 @@ export interface WhatsAppDraft {
   createdAt: string;
 }
 
+export interface EmailDraft {
+  id: string;
+  recipientEmail?: string;
+  subject: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ConfirmationData {
+  actionKind: 'delete_task' | 'delete_memory' | 'clear_all_data' | 'send_payload' | 'execute_workflow';
+  actionTitle: string;
+  actionDescription: string;
+  targetId?: string;
+}
+
 export type ActionType = 
   | 'none'
   | 'create_task'
   | 'complete_task'
+  | 'delete_task'
   | 'add_memory'
+  | 'delete_memory'
   | 'whatsapp_draft'
+  | 'email_draft'
   | 'web_search'
+  | 'multi_step_workflow'
+  | 'confirmation_required'
   | 'toggle_setting';
+
+export interface SearchSource {
+  title: string;
+  uri: string;
+}
 
 export interface MessageActionData {
   task?: Partial<Task>;
   memory?: Partial<Memory>;
   whatsapp?: Partial<WhatsAppDraft>;
+  email?: Partial<EmailDraft>;
   searchQuery?: string;
+  searchSummary?: string;
+  searchSources?: SearchSource[];
+  confirmation?: ConfirmationData;
+  targetTaskId?: string;
+  targetMemoryId?: string;
+  workflowSummary?: string;
 }
 
 export interface Message {
@@ -57,6 +91,12 @@ export interface Message {
   actionType?: ActionType;
   actionData?: MessageActionData;
   actionCompleted?: boolean;
+}
+
+export interface FileData {
+  name: string;
+  type: string;
+  content: string; // base64 or text string
 }
 
 export interface Conversation {

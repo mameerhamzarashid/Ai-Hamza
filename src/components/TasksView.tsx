@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { 
   CheckSquare, Plus, Search, Calendar, Clock, 
-  Trash2, Edit3, CheckCircle2, Circle, Sparkles, X, Terminal 
+  Trash2, Edit3, CheckCircle2, Circle, Sparkles, X, Terminal, Repeat 
 } from 'lucide-react';
-import { Task, Priority } from '../types';
+import { Task, Priority, RecurringFrequency } from '../types';
 
 interface TasksViewProps {
   tasks: Task[];
@@ -34,6 +34,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueTime, setDueTime] = useState('17:00');
   const [category, setCategory] = useState('Personal');
+  const [recurring, setRecurring] = useState<RecurringFrequency>('none');
   const [naturalInput, setNaturalInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
 
@@ -44,6 +45,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setDueDate(new Date().toISOString().split('T')[0]);
     setDueTime('17:00');
     setCategory('Personal');
+    setRecurring('none');
     setNaturalInput('');
     setEditingTask(null);
     setShowAddModal(true);
@@ -57,6 +59,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setDueDate(task.dueDate || new Date().toISOString().split('T')[0]);
     setDueTime(task.dueTime || '12:00');
     setCategory(task.category || 'Personal');
+    setRecurring(task.recurring || 'none');
     setShowAddModal(true);
   };
 
@@ -71,6 +74,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         dueDate,
         dueTime,
         category,
+        recurring,
       });
     } else {
       onAddTask({
@@ -81,6 +85,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         dueTime,
         status: 'pending',
         category,
+        recurring,
       });
     }
     setShowAddModal(false);
@@ -245,6 +250,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
                             {task.category}
                           </span>
                         )}
+                        {task.recurring && task.recurring !== 'none' && (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold flex items-center gap-1 uppercase">
+                            <Repeat className="w-2.5 h-2.5" />
+                            {task.recurring}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -403,6 +414,22 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div className="font-mono">
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1 flex items-center gap-1">
+                  <Repeat className="w-3 h-3 text-emerald-400" /> RECURRING SCHEDULE
+                </label>
+                <select
+                  value={recurring}
+                  onChange={(e) => setRecurring(e.target.value as RecurringFrequency)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                >
+                  <option value="none">One-time Task</option>
+                  <option value="daily">Daily Reminder</option>
+                  <option value="weekly">Weekly Recurring</option>
+                  <option value="monthly">Monthly Recurring</option>
+                </select>
               </div>
             </div>
 

@@ -46,7 +46,7 @@ app.get('/api/health', (req, res) => {
 // ---------------------------
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, history, tasks = [], memories = [], userSettings = {} } = req.body;
+    const { message, history, fileData, tasks = [], memories = [], userSettings = {} } = req.body;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message string is required' });
@@ -61,48 +61,55 @@ app.post('/api/chat', async (req, res) => {
     const currentTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const systemInstruction = `
-You are "Hamza AI", a highly capable, intelligent, and friendly mobile AI Assistant built for ${userName}.
+You are "Hamza AI", an autonomous, highly intelligent, personal AI Agent built for ${userName}.
 Current date: ${todayStr}, Current time: ${currentTimeStr}.
 User preferred language setting: ${languagePreference}.
 
-CRITICAL BEHAVIOR RULES:
-1. Default Response Language: Always respond in natural Roman Urdu (e.g. "Ji Hamza! Main ne WhatsApp message draft kar diya hai.") UNLESS the user explicitly writes in English or asks for an English response ("English mein jawab do").
-2. Intent Understanding: Understand informal phrases, typos, spelling errors, and mixed Roman Urdu/English commands.
-3. Scope & Truthfulness: Never claim that the message was sent automatically. Always state that you prepared a draft and offer the user to edit or click "Open WhatsApp".
-4. Structured Actions: You can trigger 4 types of actions by returning them in the structured JSON response:
-   - 'create_task': when the user wants to set a reminder or task (e.g. "Ali ko call karna hai", "Kal 5 baje meeting").
-   - 'complete_task': when the user wants to complete or check off a task (e.g. "Ahmed wali task complete kar do").
-   - 'add_memory': when the user wants you to remember a personal detail, contact info, goal, or preference.
-   - 'whatsapp_draft': when the user asks to write, draft, or compose a message/reply for WhatsApp (e.g. "WhatsApp message banao", "Isko message likho", "Client ko reply do", "Ali ko WhatsApp par bolo ke meeting kal hai").
-   - 'none': general conversation, Q&A, formatting, or guidance.
+CORE AGENT CAPABILITIES:
+1. Multi-turn natural communication (Roman Urdu default, English/Urdu supported).
+2. Autonomous task creation, scheduling, recurring reminders (daily, weekly, monthly), task completion, and deletion.
+3. Memory vault storage, categorization, and memory item purging.
+4. Document / Image analysis & summarization (text, PDF, image extraction).
+5. Email and WhatsApp payload drafting with one-click action buttons.
+6. Web intelligence & grounded search.
+7. Multi-step workflows (e.g. analyze input -> create reminder -> store memory -> draft notification).
+8. SENSITIVE ACTION CONFIRMATION:
+   For sensitive actions (e.g. deleting tasks/memories, clearing all data, purging logs, executing high-impact workflows), ALWAYS set actionType to 'confirmation_required' with actionData.confirmation detailing the action so the user can explicitly confirm!
 
-For WHATSAPP_DRAFT actions:
-Formulate a polite, professional, and context-appropriate WhatsApp message text based on recipient and purpose.
-Example JSON actionData:
-{
-  "whatsapp": {
-    "recipientName": "Client",
-    "phone": "",
-    "messageText": "Hello! Thank you for contacting us. We have received your query..."
-  }
-}
+ACTION TYPES YOU CAN TRIGGER:
+- 'create_task': Create reminder/task or recurring task (e.g., "Har Monday reminder", "Kal meeting").
+- 'complete_task': Mark task completed by targetTaskId.
+- 'delete_task': Delete task. Requires confirmation or sets confirmation_required!
+- 'add_memory': Save detail/preference/contact to memory core.
+- 'delete_memory': Purge a memory item. Requires confirmation!
+- 'whatsapp_draft': Draft WhatsApp message.
+- 'email_draft': Draft email with recipient, subject, and body.
+- 'web_search': Trigger web intelligence search.
+- 'multi_step_workflow': Execute multiple simultaneous operations (e.g., create task + save memory + draft email).
+- 'confirmation_required': Present user with a confirm/cancel card before executing high-impact action.
+- 'none': Direct response, Q&A, formatting, or guidance.
 
 CURRENT SAVED MEMORIES OF USER:
-${memories.map((m: any) => `- ${m.key}: ${m.value}`).join('\n')}
+${memories.map((m: any) => `- ID: "${m.id}" | ${m.key}: ${m.value}`).join('\n')}
 
 CURRENT TASKS LIST:
-${tasks.map((t: any) => `- [${t.status}] ID: "${t.id}" | Title: "${t.title}" | Due: ${t.dueDate || 'N/A'} ${t.dueTime || ''} | Priority: ${t.priority}`).join('\n')}
+${tasks.map((t: any) => `- [${t.status}] ID: "${t.id}" | Title: "${t.title}" | Due: ${t.dueDate || 'N/A'} ${t.dueTime || ''} | Recurring: ${t.recurring || 'none'} | Priority: ${t.priority}`).join('\n')}
 
 Response Format:
 You MUST output valid JSON matching this schema:
 {
-  "replyText": "Conversational reply to the user in Roman Urdu or requested language",
-  "actionType": "none" | "create_task" | "complete_task" | "add_memory" | "whatsapp_draft",
+  "replyText": "Conversational response in Roman Urdu or requested language",
+  "actionType": "none" | "create_task" | "complete_task" | "delete_task" | "add_memory" | "delete_memory" | "whatsapp_draft" | "email_draft" | "web_search" | "multi_step_workflow" | "confirmation_required",
   "actionData": {
-    "task": { "title": "...", "notes": "...", "priority": "high"|"medium"|"low", "dueDate": "YYYY-MM-DD", "dueTime": "HH:mm" },
-    "targetTaskId": "id_if_completing_existing_task",
-    "memory": { "key": "...", "value": "...", "category": "personal"|"preference"|"contact"|"project"|"goal" },
-    "whatsapp": { "recipientName": "...", "messageText": "..." }
+    "task": { "title": "...", "notes": "...", "priority": "high"|"medium"|"low", "dueDate": "YYYY-MM-DD", "dueTime": "HH:mm", "recurring": "none"|"daily"|"weekly"|"monthly", "category": "..." },
+    "targetTaskId": "id_if_targeting_task",
+    "targetMemoryId": "id_if_targeting_memory",
+    "memory": { "key": "...", "value": "...", "category": "personal"|"preference"|"contact"|"project"|"goal"|"other" },
+    "whatsapp": { "recipientName": "...", "phone": "...", "messageText": "..." },
+    "email": { "recipientEmail": "...", "subject": "...", "body": "..." },
+    "searchQuery": "...",
+    "workflowSummary": "...",
+    "confirmation": { "actionKind": "delete_task"|"delete_memory"|"clear_all_data"|"send_payload"|"execute_workflow", "actionTitle": "...", "actionDescription": "...", "targetId": "..." }
   }
 }
 `;
@@ -110,12 +117,13 @@ You MUST output valid JSON matching this schema:
     if (!ai) {
       // Fallback rule-based intelligence if GEMINI_API_KEY is not set yet
       const lower = message.toLowerCase();
-      let replyText = '⚠️ Gemini API key is not configured in server environment secrets. Showing offline assistant mode.';
+      let replyText = '⚠️ Gemini API key is not configured in server environment secrets. Showing offline agent mode.';
       let actionType: any = 'none';
       let actionData: any = {};
 
       if (lower.includes('task') || lower.includes('yaad dila') || lower.includes('call karna') || lower.includes('baje')) {
         actionType = 'create_task';
+        const isWeekly = lower.includes('monday') || lower.includes('weekly') || lower.includes('har haftay');
         replyText = `Ji ${userName}! (Offline Mode) Main ne aapke liye task create kar diya hai. [Set GEMINI_API_KEY for real Gemini AI]`;
         actionData = {
           task: {
@@ -123,6 +131,7 @@ You MUST output valid JSON matching this schema:
             priority: lower.includes('urgent') || lower.includes('jaruri') ? 'high' : 'medium',
             dueDate: todayStr,
             dueTime: '17:00',
+            recurring: isWeekly ? 'weekly' : 'none',
           },
         };
       } else if (lower.includes('memory') || lower.includes('yaad rakho')) {
@@ -135,21 +144,27 @@ You MUST output valid JSON matching this schema:
             category: 'preference',
           },
         };
-      } else if (lower.includes('whatsapp') || lower.includes('message banao') || lower.includes('message likho') || lower.includes('reply do') || lower.includes('ko message') || lower.includes('bolo ke') || lower.includes('draft')) {
+      } else if (lower.includes('whatsapp') || lower.includes('message banao') || lower.includes('draft')) {
         actionType = 'whatsapp_draft';
-        const recipient = lower.includes('ali') ? 'Ali' : lower.includes('ahmed') ? 'Ahmed' : lower.includes('client') ? 'Client' : 'Recipient';
-        replyText = `Main ne ${recipient} ke liye WhatsApp message ka draft taiyar kar liya hai. Aap neeche message preview dekh kar 'Open WhatsApp' button daba kar message bhej sakte hain.`;
+        const recipient = lower.includes('ali') ? 'Ali' : lower.includes('ahmed') ? 'Ahmed' : 'Recipient';
+        replyText = `Main ne ${recipient} ke liye WhatsApp message ka draft taiyar kar diya hai.`;
         actionData = {
           whatsapp: {
             recipientName: recipient,
             phone: '',
-            messageText: lower.includes('client')
-              ? 'Hello! Thank you for reaching out. We have received your request and will get back to you shortly with the details.'
-              : `Assalam-o-Alaikum ${recipient}, umeed hai aap khairiyat se honge. ${message}`,
+            messageText: `Assalam-o-Alaikum ${recipient}, ${message}`,
           },
         };
-      } else if (lower.includes('english')) {
-        replyText = `Sure ${userName}! I will respond in English. Note: Please configure GEMINI_API_KEY in server secrets for full Gemini AI responses.`;
+      } else if (lower.includes('email') || lower.includes('mail')) {
+        actionType = 'email_draft';
+        replyText = `Main ne Email ka draft taiyar kar diya hai. Aap 'Draft in Email Client' button dabayein.`;
+        actionData = {
+          email: {
+            recipientEmail: 'contact@example.com',
+            subject: 'Update from Hamza AI',
+            body: `Hello,\n\n${message}\n\nBest regards,\n${userName}`,
+          },
+        };
       } else {
         replyText = `Ji ${userName}! Main Hamza AI hoon. ⚠️ Server par GEMINI_API_KEY configured nahi hai. Direct Gemini AI response ke liye environment variables mein GEMINI_API_KEY add karein.`;
       }
@@ -157,7 +172,7 @@ You MUST output valid JSON matching this schema:
       return res.json({ replyText, actionType, actionData, apiNotConfigured: true });
     }
 
-    // Call Gemini 3.6 Flash
+    // Prepare contents array for Gemini
     const formattedHistory = Array.isArray(history)
       ? history.slice(-10).map((h: any) => ({
           role: h.sender === 'user' ? 'user' : 'model',
@@ -165,9 +180,30 @@ You MUST output valid JSON matching this schema:
         }))
       : [];
 
+    const userMessageParts: any[] = [];
+
+    if (fileData && fileData.content) {
+      if (fileData.type && (fileData.type.startsWith('image/') || fileData.type === 'application/pdf')) {
+        userMessageParts.push({
+          inlineData: {
+            mimeType: fileData.type,
+            data: fileData.content,
+          },
+        });
+      } else {
+        userMessageParts.push({
+          text: `[ATTACHED FILE: ${fileData.name}]\n${fileData.content}\n\n[USER COMMAND]: ${message}`,
+        });
+      }
+    }
+
+    if (userMessageParts.length === 0 || message) {
+      userMessageParts.push({ text: message });
+    }
+
     const contents = [
       ...formattedHistory,
-      { role: 'user', parts: [{ text: message }] },
+      { role: 'user', parts: userMessageParts },
     ];
 
     const response = await ai.models.generateContent({
@@ -192,9 +228,12 @@ You MUST output valid JSON matching this schema:
                     priority: { type: Type.STRING },
                     dueDate: { type: Type.STRING },
                     dueTime: { type: Type.STRING },
+                    recurring: { type: Type.STRING },
+                    category: { type: Type.STRING },
                   },
                 },
                 targetTaskId: { type: Type.STRING },
+                targetMemoryId: { type: Type.STRING },
                 memory: {
                   type: Type.OBJECT,
                   properties: {
@@ -207,7 +246,27 @@ You MUST output valid JSON matching this schema:
                   type: Type.OBJECT,
                   properties: {
                     recipientName: { type: Type.STRING },
+                    phone: { type: Type.STRING },
                     messageText: { type: Type.STRING },
+                  },
+                },
+                email: {
+                  type: Type.OBJECT,
+                  properties: {
+                    recipientEmail: { type: Type.STRING },
+                    subject: { type: Type.STRING },
+                    body: { type: Type.STRING },
+                  },
+                },
+                searchQuery: { type: Type.STRING },
+                workflowSummary: { type: Type.STRING },
+                confirmation: {
+                  type: Type.OBJECT,
+                  properties: {
+                    actionKind: { type: Type.STRING },
+                    actionTitle: { type: Type.STRING },
+                    actionDescription: { type: Type.STRING },
+                    targetId: { type: Type.STRING },
                   },
                 },
               },

@@ -161,6 +161,25 @@ export default function App() {
     showToast('Session Logs Cleared', undefined, 'info');
   };
 
+  // Confirmation Execution Handler
+  const handleConfirmSensitiveAction = (msgId: string, actionData: any) => {
+    if (!actionData || !actionData.confirmation) return;
+    const { actionKind, targetId } = actionData.confirmation;
+
+    if (actionKind === 'delete_task' && targetId) {
+      handleDeleteTask(targetId);
+      showToast('Task Deleted', 'Removed from schedule', 'info');
+    } else if (actionKind === 'delete_memory' && targetId) {
+      handleDeleteMemory(targetId);
+      showToast('Memory Purged', 'Purged from vault', 'info');
+    } else if (actionKind === 'clear_all_data') {
+      handleResetAllData();
+      showToast('Data Purged', 'All local logs cleared', 'info');
+    } else {
+      showToast('Action Executed', 'Confirmed operation executed successfully.');
+    }
+  };
+
   const handleSendMessage = async (text: string, attachment?: File) => {
     let activeConv = conversations.find((c) => c.id === activeConversationId);
     if (!activeConv) {
@@ -172,8 +191,40 @@ export default function App() {
     }
 
     let fullPromptText = text;
+    let filePayload: any = null;
+
     if (attachment) {
       fullPromptText += ` [Attachment: ${attachment.name}]`;
+
+      // Read file contents
+      try {
+        if (attachment.type.startsWith('image/') || attachment.type === 'application/pdf') {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const result = reader.result as string;
+              const base64Data = result.split(',')[1] || result;
+              resolve(base64Data);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(attachment);
+          });
+          filePayload = {
+            name: attachment.name,
+            type: attachment.type,
+            content: base64,
+          };
+        } else {
+          const textContent = await attachment.text();
+          filePayload = {
+            name: attachment.name,
+            type: attachment.type || 'text/plain',
+            content: textContent,
+          };
+        }
+      } catch (err) {
+        console.error('File reading error:', err);
+      }
     }
 
     const userMsg: Message = {
@@ -207,6 +258,7 @@ export default function App() {
         body: JSON.stringify({
           message: fullPromptText,
           history: updatedMessages,
+          fileData: filePayload,
           tasks,
           memories,
           userSettings: settings,
@@ -226,14 +278,18 @@ export default function App() {
           priority: (actionData.task.priority as any) || 'medium',
           dueDate: actionData.task.dueDate || new Date().toISOString().split('T')[0],
           dueTime: actionData.task.dueTime || '17:00',
+          recurring: (actionData.task.recurring as any) || 'none',
           status: 'pending',
-          category: 'AI Auto',
+          category: actionData.task.category || 'AI Auto',
           createdAt: new Date().toISOString(),
         };
         setTasks((prev) => [newTask, ...prev]);
         showToast('Task Queued', `"${newTask.title}"`);
       } else if (actionType === 'complete_task' && actionData.targetTaskId) {
         handleToggleTaskStatus(actionData.targetTaskId);
+      } else if (actionType === 'delete_task' && actionData.targetTaskId) {
+        handleDeleteTask(actionData.targetTaskId);
+        showToast('Task Deleted', undefined, 'info');
       } else if (actionType === 'add_memory' && actionData.memory && actionData.memory.key) {
         const newMem: Memory = {
           id: 'mem-' + Date.now(),
@@ -245,6 +301,9 @@ export default function App() {
         };
         setMemories((prev) => [newMem, ...prev]);
         showToast('Memory Stored', `"${newMem.key}"`);
+      } else if (actionType === 'delete_memory' && actionData.targetMemoryId) {
+        handleDeleteMemory(actionData.targetMemoryId);
+        showToast('Memory Purged', undefined, 'info');
       } else if (actionType === 'whatsapp_draft' && actionData.whatsapp) {
         const newDraft: WhatsAppDraft = {
           id: 'draft-' + Date.now(),
@@ -341,6 +400,7 @@ export default function App() {
               settings={settings}
               showHistoryDrawer={showHistoryDrawer}
               onCloseHistoryDrawer={() => setShowHistoryDrawer(false)}
+              onConfirmSensitiveAction={handleConfirmSensitiveAction}
             />
           )}
 
