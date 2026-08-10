@@ -2,6 +2,9 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 export interface Env {
   GEMINI_API_KEY?: string;
+  WHATSAPP_VERIFY_TOKEN?: string;
+  WHATSAPP_ACCESS_TOKEN?: string;
+  WHATSAPP_PHONE_NUMBER_ID?: string;
   ASSETS: Fetcher;
 }
 
@@ -70,6 +73,125 @@ export default {
         }),
         { headers: corsHeaders }
       );
+    }
+
+    // ---------------------------
+    // WHATSAPP WEBHOOK (GET - Meta Verification)
+    // ---------------------------
+    if ((url.pathname === '/webhook' || url.pathname === '/api/webhook') && request.method === 'GET') {
+      const mode = url.searchParams.get('hub.mode');
+      const token = url.searchParams.get('hub.verify_token');
+      const challenge = url.searchParams.get('hub.challenge');
+
+      const verifyToken =
+        env?.WHATSAPP_VERIFY_TOKEN ||
+        (typeof process !== 'undefined' ? process?.env?.WHATSAPP_VERIFY_TOKEN : undefined) ||
+        'hamza_ai_verify_token';
+
+      if (mode === 'subscribe' && token === verifyToken) {
+        return new Response(challenge || '', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
+        });
+      }
+
+      return new Response('Forbidden: Invalid verify token or mode', {
+        status: 403,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+    }
+
+    // ---------------------------
+    // WHATSAPP WEBHOOK (POST - Incoming Messages)
+    // ---------------------------
+    if ((url.pathname === '/webhook' || url.pathname === '/api/webhook') && request.method === 'POST') {
+      try {
+        const payload: any = await request.json();
+
+        const processWhatsAppMessage = async () => {
+          try {
+            const entry = payload?.entry?.[0];
+            const change = entry?.changes?.[0];
+            const value = change?.value;
+            const messageObj = value?.messages?.[0];
+
+            if (!messageObj) return;
+
+            const from = messageObj.from;
+            const textBody = messageObj.text?.body || messageObj.caption || '';
+            const senderName = value?.contacts?.[0]?.profile?.name || 'User';
+            const metaPhoneId = value?.metadata?.phone_number_id;
+
+            if (!from || !textBody) return;
+
+            const ai = getGenAI(env);
+            let replyText = `Assalam-o-Alaikum ${senderName}! Main Hamza AI hoon. AAP ka paigham mil gaya: "${textBody}"`;
+
+            if (ai) {
+              const systemInstruction = `
+You are "Hamza AI", a highly intelligent personal AI agent responding to WhatsApp messages from ${senderName}.
+Keep your responses helpful, clear, concise, and optimized for mobile/WhatsApp readability.
+Support Roman Urdu (default) and English naturally based on user language.
+`.trim();
+
+              const response = await ai.models.generateContent({
+                model: 'gemini-3.6-flash',
+                contents: textBody,
+                config: {
+                  systemInstruction,
+                },
+              });
+
+              if (response.text) {
+                replyText = response.text;
+              }
+            }
+
+            const accessToken =
+              env?.WHATSAPP_ACCESS_TOKEN ||
+              (typeof process !== 'undefined' ? process?.env?.WHATSAPP_ACCESS_TOKEN : undefined);
+            const phoneNumberId =
+              metaPhoneId ||
+              env?.WHATSAPP_PHONE_NUMBER_ID ||
+              (typeof process !== 'undefined' ? process?.env?.WHATSAPP_PHONE_NUMBER_ID : undefined);
+
+            if (accessToken && phoneNumberId) {
+              await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  messaging_product: 'whatsapp',
+                  recipient_type: 'individual',
+                  to: from,
+                  type: 'text',
+                  text: { body: replyText },
+                }),
+              });
+            }
+          } catch (err) {
+            console.error('Error processing WhatsApp message:', err);
+          }
+        };
+
+        if (ctx && typeof ctx.waitUntil === 'function') {
+          ctx.waitUntil(processWhatsAppMessage());
+        } else {
+          await processWhatsAppMessage();
+        }
+
+        return new Response(JSON.stringify({ status: 'success' }), {
+          status: 200,
+          headers: corsHeaders,
+        });
+      } catch (err: any) {
+        return new Response(JSON.stringify({ status: 'error', message: err.message }), {
+          status: 200,
+          headers: corsHeaders,
+        });
+      }
     }
 
     // ---------------------------
