@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Settings, User, Languages, Palette, Bell, ShieldAlert, 
-  Brain, Wrench, Info, Check, RefreshCw 
+  Settings, User, Globe, MessageSquare, Shield, 
+  Trash2, AlertTriangle, Check, Terminal, Moon, Sun, Smartphone
 } from 'lucide-react';
 import { UserSettings, NavTab } from '../types';
 
@@ -18,202 +18,162 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onNavigate,
   onResetAllData,
 }) => {
-  const handleChange = (key: keyof UserSettings, value: any) => {
+  const [userName, setUserName] = useState(settings.userName);
+  const [assistantName, setAssistantName] = useState(settings.assistantName);
+  const [language, setLanguage] = useState(settings.language);
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const handleSave = () => {
     onUpdateSettings({
       ...settings,
-      [key]: value,
+      userName,
+      assistantName,
+      language,
+    });
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 2000);
+  };
+
+  const toggleTheme = () => {
+    onUpdateSettings({
+      ...settings,
+      theme: settings.theme === 'dark' ? 'light' : 'dark',
     });
   };
 
   return (
-    <div className="space-y-4 pb-24 animate-in fade-in duration-200">
-      {/* Header */}
+    <div className="space-y-4 pb-24 animate-in fade-in duration-200 font-sans">
+      {/* Top Header */}
       <div>
-        <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+        <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2 font-mono">
           <Settings className="w-5 h-5 text-emerald-400" />
-          Assistant Settings
+          SYSTEM_CONFIG
         </h2>
-        <p className="text-xs text-slate-400">
-          Customize Hamza AI personality, language, and privacy controls
+        <p className="text-xs text-slate-400 font-mono">
+          Manage assistant profile & system options
         </p>
       </div>
 
-      {/* Identity & Names */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <User className="w-4 h-4 text-emerald-400" />
-          Profile & Identity
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Settings Form Card */}
+      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4 font-mono">
+        <div className="space-y-3">
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-              Your Name
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+              USER_NAME
             </label>
-            <input
-              type="text"
-              value={settings.userName}
-              onChange={(e) => handleChange('userName', e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-            />
+            <div className="relative">
+              <User className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-              Assistant Name
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+              ASSISTANT_NAME
             </label>
-            <input
-              type="text"
-              value={settings.assistantName}
-              onChange={(e) => handleChange('assistantName', e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-            />
+            <div className="relative">
+              <Terminal className="w-4 h-4 absolute left-3 top-2.5 text-emerald-400" />
+              <input
+                type="text"
+                value={assistantName}
+                onChange={(e) => setAssistantName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+              />
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Language & Behavior */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <Languages className="w-4 h-4 text-teal-400" />
-          Language & Response Preference
-        </h3>
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+              PREFERRED_LANGUAGE
+            </label>
+            <div className="relative">
+              <Globe className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as any)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+              >
+                <option value="Roman Urdu">Roman Urdu + English</option>
+                <option value="English">English Only</option>
+                <option value="Urdu">Urdu Script</option>
+              </select>
+            </div>
+          </div>
 
-        <div>
-          <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-            Default Language
-          </label>
-          <select
-            value={settings.language}
-            onChange={(e) => handleChange('language', e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-          >
-            <option value="roman_urdu">Roman Urdu (Default - Mix English)</option>
-            <option value="english">English</option>
-            <option value="urdu">Urdu Script</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Appearance */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <Palette className="w-4 h-4 text-amber-400" />
-          Theme & Display
-        </h3>
-
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { id: 'dark', label: 'Dark Mode' },
-            { id: 'light', label: 'Light Mode' },
-            { id: 'system', label: 'System' },
-          ].map((themeOpt) => (
+          <div className="pt-2 flex items-center justify-between border-t border-slate-800">
+            <div>
+              <h4 className="text-xs font-bold text-white">THEME_MODE</h4>
+              <p className="text-[10px] text-slate-400">Dark cyber vs crisp light</p>
+            </div>
             <button
-              key={themeOpt.id}
-              onClick={() => handleChange('theme', themeOpt.id)}
-              className={`p-2.5 rounded-xl border text-xs font-medium text-center transition-all ${
-                settings.theme === themeOpt.id
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : 'bg-slate-950 text-slate-400 border-slate-800'
-              }`}
+              onClick={toggleTheme}
+              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-emerald-400 flex items-center gap-1.5"
             >
-              {themeOpt.label}
+              {settings.theme === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
+              {settings.theme.toUpperCase()}
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Security & Controls */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-rose-400" />
-          Security & Actions
-        </h3>
-
-        <div className="space-y-2">
-          <label className="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer">
-            <div>
-              <span className="text-xs font-semibold text-white block">Action Confirmations</span>
-              <span className="text-[10px] text-slate-400">
-                Confirm before preparing external drafts or clearing tasks
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.confirmImportantActions}
-              onChange={(e) => handleChange('confirmImportantActions', e.target.checked)}
-              className="w-4 h-4 text-emerald-500 rounded border-slate-700 focus:ring-emerald-500"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer">
-            <div>
-              <span className="text-xs font-semibold text-white block">Notifications</span>
-              <span className="text-[10px] text-slate-400">
-                Show task reminder toasts and action alerts
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={settings.notificationsEnabled}
-              onChange={(e) => handleChange('notificationsEnabled', e.target.checked)}
-              className="w-4 h-4 text-emerald-500 rounded border-slate-700 focus:ring-emerald-500"
-            />
-          </label>
-        </div>
-      </div>
-
-      {/* Shortcuts */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <button
-          onClick={() => onNavigate('memory')}
-          className="p-3 bg-slate-900 border border-slate-800 rounded-2xl hover:border-indigo-500/40 text-left transition-all"
-        >
-          <Brain className="w-5 h-5 text-indigo-400 mb-1" />
-          <span className="text-xs font-bold text-white block">Manage Memory</span>
-          <span className="text-[10px] text-slate-400">View saved user context</span>
-        </button>
-
-        <button
-          onClick={() => onNavigate('tools')}
-          className="p-3 bg-slate-900 border border-slate-800 rounded-2xl hover:border-emerald-500/40 text-left transition-all"
-        >
-          <Wrench className="w-5 h-5 text-emerald-400 mb-1" />
-          <span className="text-xs font-bold text-white block">Connected Tools</span>
-          <span className="text-[10px] text-slate-400">Check API bridges</span>
-        </button>
-      </div>
-
-      {/* About & Data Reset */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-teal-400" />
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-              About Hamza AI
-            </h3>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-            v1.0.0 Pro
-          </span>
         </div>
 
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Hamza AI is a mobile-first Personal AI Assistant supporting Roman Urdu & English natural language understanding, smart task management, local context memory, and preview drafts. Powered by server-side <b>Gemini 3.6 Flash</b>.
-        </p>
-
-        <div className="pt-2 border-t border-slate-800 flex justify-end">
+        <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+          {savedSuccess && (
+            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+              <Check className="w-4 h-4" /> CONFIG_SAVED
+            </span>
+          )}
           <button
-            onClick={() => {
-              if (confirm('Are you sure you want to reset all tasks, memories, and chat history to defaults?')) {
-                onResetAllData();
-              }
-            }}
-            className="text-xs font-semibold text-rose-400 hover:text-rose-300 flex items-center gap-1 p-1"
+            onClick={handleSave}
+            className="ml-auto px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all"
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Reset Local App Data
+            SAVE CONFIG
           </button>
         </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="p-4 rounded-2xl bg-slate-900/80 border border-rose-500/30 space-y-2 font-mono">
+        <h4 className="text-xs font-bold text-rose-400 flex items-center gap-1.5 uppercase">
+          <AlertTriangle className="w-4 h-4" /> DANGER_ZONE
+        </h4>
+        <p className="text-[11px] text-slate-400">
+          Wipe all tasks, saved memory, and local conversation history from storage.
+        </p>
+
+        {showConfirmReset ? (
+          <div className="p-3 bg-slate-950 border border-rose-500/40 rounded-xl space-y-2 text-xs">
+            <p className="font-bold text-rose-400">
+              [CONFIRM_PURGE] All local data will be permanently wiped. Proceed?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={onResetAllData}
+                className="px-3 py-1 bg-rose-500 text-white font-bold rounded-lg text-xs hover:bg-rose-600"
+              >
+                YES, PURGE ALL DATA
+              </button>
+              <button
+                onClick={() => setShowConfirmReset(false)}
+                className="px-3 py-1 bg-slate-800 text-slate-300 rounded-lg text-xs"
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowConfirmReset(true)}
+            className="px-3 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            WIPE ALL LOCAL DATA
+          </button>
+        )}
       </div>
     </div>
   );

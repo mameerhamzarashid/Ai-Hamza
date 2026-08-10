@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Send, Mic, Paperclip, Plus, Sparkles, Volume2, VolumeX,
-  CheckCircle2, Brain, MessageSquare, Wrench, FileText, ChevronDown,
-  Bot, Clock, ArrowRight, Zap, CheckSquare
+  Send, Mic, Paperclip, Terminal, Volume2, VolumeX,
+  CheckCircle2, Brain, MessageSquare, FileText,
+  Clock, ArrowRight, Zap, CheckSquare, Copy, RotateCcw, X, Trash2, Check, Search, ShieldCheck
 } from 'lucide-react';
 import { Message, Conversation, Task, Memory, WhatsAppDraft, UserSettings, NavTab } from '../types';
 import { SpeechHelper } from '../utils/voice';
@@ -13,6 +13,7 @@ interface ChatViewProps {
   activeConversationId: string;
   onSelectConversation: (id: string) => void;
   onNewConversation: () => void;
+  onDeleteConversation: (id: string) => void;
   onSendMessage: (text: string, attachment?: File) => void;
   isGenerating: boolean;
   tasks: Task[];
@@ -20,6 +21,8 @@ interface ChatViewProps {
   onOpenWhatsAppModal: (draft: WhatsAppDraft) => void;
   onNavigate: (tab: NavTab) => void;
   settings: UserSettings;
+  showHistoryDrawer: boolean;
+  onCloseHistoryDrawer: () => void;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -27,6 +30,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   activeConversationId,
   onSelectConversation,
   onNewConversation,
+  onDeleteConversation,
   onSendMessage,
   isGenerating,
   tasks,
@@ -34,12 +38,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onOpenWhatsAppModal,
   onNavigate,
   settings,
+  showHistoryDrawer,
+  onCloseHistoryDrawer,
 }) => {
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
-  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -93,265 +99,291 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  const quickCategories = [
+  const handleCopyText = (msgId: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMsgId(msgId);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
+
+  const handleRegenerate = () => {
+    if (messages.length < 2 || isGenerating) return;
+    const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user');
+    if (lastUserMsg) {
+      onSendMessage(lastUserMsg.text);
+    }
+  };
+
+  const examplePrompts = [
     {
-      title: 'WhatsApp Assistant',
-      icon: <MessageSquare className="w-4 h-4 text-emerald-400" />,
-      color: 'hover:border-emerald-500/50 hover:bg-emerald-950/30',
-      prompts: [
-        'WhatsApp message banao client ke liye',
-        'Isko message likho',
-        'Client ko reply do ke project ready hai',
-      ],
+      code: '[01]',
+      title: 'WhatsApp Payload',
+      prompt: 'Client ko WhatsApp message draft kar do ke project complete ho gaya hai.',
+      icon: <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />,
     },
     {
-      title: 'Tasks & Reminders',
-      icon: <CheckSquare className="w-4 h-4 text-amber-400" />,
-      color: 'hover:border-amber-500/50 hover:bg-amber-950/30',
-      prompts: [
-        'Kal 5 baje meeting ka reminder lagao',
-        'Mere pending tasks dikhao',
-        'Call Ali task finish kar do',
-      ],
+      code: '[02]',
+      title: 'Schedule Task',
+      prompt: 'Kal shaam 5 baje Ali ko call karne ka reminder lagao.',
+      icon: <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />,
     },
     {
-      title: 'Memory & Context',
-      icon: <Brain className="w-4 h-4 text-indigo-400" />,
-      color: 'hover:border-indigo-500/50 hover:bg-indigo-950/30',
-      prompts: [
-        'Mera Office timing 9am save karo',
-        'Meri saved memories dikhao',
-      ],
+      code: '[03]',
+      title: 'Save Memory',
+      prompt: 'Mera office timing subah 9 baje hai, isko yaad rakhna.',
+      icon: <Brain className="w-3.5 h-3.5 text-emerald-400" />,
     },
     {
-      title: 'General & Speed',
-      icon: <Zap className="w-4 h-4 text-teal-400" />,
-      color: 'hover:border-teal-500/50 hover:bg-teal-950/30',
-      prompts: [
-        'English mein jawab do',
-        'Aaj ke din ki summary do',
-      ],
+      code: '[04]',
+      title: 'Web Intel Search',
+      prompt: 'Search the web for the latest updates on AI mobile assistants.',
+      icon: <Search className="w-3.5 h-3.5 text-emerald-400" />,
+    },
+    {
+      code: '[05]',
+      title: 'Pending Tasks',
+      prompt: 'Mere sabhi pending tasks aur reminders ki list dikhao.',
+      icon: <Clock className="w-3.5 h-3.5 text-emerald-400" />,
+    },
+    {
+      code: '[06]',
+      title: 'Direct Query',
+      prompt: 'Explain quantum computing in simple Roman Urdu.',
+      icon: <Zap className="w-3.5 h-3.5 text-emerald-400" />,
     },
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] max-w-4xl mx-auto pb-14">
-      {/* Top Conversation Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-t-2xl p-3 flex items-center justify-between shrink-0 shadow-sm relative z-20">
-        <div className="relative">
-          <button
-            onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
-            className="flex items-center gap-2 text-xs font-bold text-white hover:text-emerald-400 transition-colors bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800"
-          >
-            <Bot className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="truncate max-w-[180px]">{activeConv?.title || 'Chat Session'}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          </button>
+    <div className="flex flex-col h-[calc(100vh-8.5rem)] max-w-3xl mx-auto relative font-sans">
+      {/* History Slide Drawer */}
+      {showHistoryDrawer && (
+        <div className="fixed inset-0 z-50 flex">
+          <div 
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" 
+            onClick={onCloseHistoryDrawer} 
+          />
+          <div className="relative w-72 max-w-[80vw] bg-slate-950 border-r border-emerald-500/20 h-full p-4 flex flex-col z-10 animate-in slide-in-from-left duration-200 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span className="text-xs font-bold text-white font-mono tracking-wider flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                SESSION_LOGS
+              </span>
+              <button
+                onClick={onCloseHistoryDrawer}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-          {/* History Dropdown */}
-          {showHistoryDropdown && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-30 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between px-2 py-1.5 mb-1 border-b border-slate-800">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Conversations</span>
-                <button
-                  onClick={() => {
-                    onNewConversation();
-                    setShowHistoryDropdown(false);
-                  }}
-                  className="text-[11px] text-emerald-400 font-semibold hover:underline flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" /> New Chat
-                </button>
-              </div>
+            <div className="py-3">
+              <button
+                onClick={() => {
+                  onNewConversation();
+                  onCloseHistoryDrawer();
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-500/20"
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                NEW SESSION
+              </button>
+            </div>
 
-              <div className="max-h-52 overflow-y-auto space-y-1">
-                {conversations.map((conv) => (
-                  <button
+            <div className="flex-1 overflow-y-auto space-y-1 py-2 font-mono text-xs">
+              {conversations.map((conv) => {
+                const isActive = conv.id === activeConversationId;
+                return (
+                  <div
                     key={conv.id}
+                    className={`group flex items-center justify-between p-2.5 rounded-xl transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/30'
+                        : 'text-slate-300 hover:bg-slate-900 hover:text-emerald-300'
+                    }`}
                     onClick={() => {
                       onSelectConversation(conv.id);
-                      setShowHistoryDropdown(false);
+                      onCloseHistoryDrawer();
                     }}
-                    className={`w-full text-left p-2 rounded-xl text-xs truncate transition-colors ${
-                      conv.id === activeConversationId
-                        ? 'bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30'
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
                   >
-                    {conv.title}
-                  </button>
-                ))}
-              </div>
+                    <div className="flex items-center gap-2 truncate">
+                      <MessageSquare className="w-3.5 h-3.5 shrink-0 opacity-70 text-emerald-400" />
+                      <span className="truncate">{conv.title}</span>
+                    </div>
+
+                    {conversations.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteConversation(conv.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 rounded transition-opacity"
+                        title="Delete chat"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onNewConversation}
-            className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            New Chat
-          </button>
-        </div>
-      </div>
-
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-slate-950/70 border-x border-slate-800/80 space-y-4">
+      {/* Messages / Welcome Container */}
+      <div className="flex-1 overflow-y-auto px-2 sm:px-4 py-4 space-y-4">
         {messages.length <= 1 ? (
-          /* ChatGPT Style Welcome Screen */
-          <div className="py-6 px-2 sm:px-6 max-w-2xl mx-auto text-center space-y-6 animate-in fade-in duration-300">
-            {/* Logo Emblem */}
-            <div className="relative inline-block">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-indigo-600 p-0.5 shadow-xl shadow-emerald-500/20 mx-auto">
-                <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-400 animate-pulse" />
-                </div>
-              </div>
-              <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-extrabold text-[9px] uppercase tracking-wider shadow-sm">
-                Hamza AI
-              </span>
+          /* Cyber Command Welcome Screen */
+          <div className="py-6 px-2 max-w-xl mx-auto text-center space-y-5 animate-in fade-in duration-300">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900/90 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 shadow-lg shadow-emerald-500/10">
+              <Terminal className="w-6 h-6" />
             </div>
 
             <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                Assalam-o-Alaikum, {settings.userName || 'Hamza'}!
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                COMMAND_CENTER // ACTIVE
+              </span>
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight mt-2.5 font-mono">
+                COMMAND CONSOLE // {settings.userName || 'USER_ADMIN'}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
-                Main Hamza AI hoon — aapka personal mobile AI assistant. WhatsApp messages, reminders, memory, aur sawalon mein madad kar sakta hoon.
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-md mx-auto">
+                Private AI Command Center supporting Roman Urdu & English natural commands. Integrated task engine, persistent memory core, and web search intelligence.
               </p>
             </div>
 
-            {/* Feature Prompt Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
-              {quickCategories.map((cat, idx) => (
-                <div
+            {/* Prompt Chips */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2 font-mono">
+              {examplePrompts.map((item, idx) => (
+                <button
                   key={idx}
-                  className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2 shadow-sm"
+                  onClick={() => handleSend(item.prompt)}
+                  className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 text-xs transition-all flex items-start gap-2.5 group text-slate-300 hover:text-white shadow-xs"
                 >
-                  <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2">
-                    {cat.icon}
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">
-                      {cat.title}
+                  <div className="mt-0.5 p-1.5 rounded-xl bg-slate-950 border border-slate-800 group-hover:border-emerald-500/30 shrink-0">
+                    {item.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-emerald-400">{item.code}</span>
+                      <span className="font-bold text-white text-xs block truncate">{item.title}</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-sans line-clamp-1 mt-0.5">
+                      "{item.prompt}"
                     </span>
                   </div>
-                  <div className="space-y-1.5">
-                    {cat.prompts.map((p, pIdx) => (
-                      <button
-                        key={pIdx}
-                        onClick={() => handleSend(p)}
-                        className={`w-full text-left p-2 rounded-xl text-xs text-slate-300 border border-slate-800/60 bg-slate-950/50 ${cat.color} transition-all flex items-center justify-between group`}
-                      >
-                        <span className="truncate pr-2">"{p}"</span>
-                        <ArrowRight className="w-3 h-3 text-slate-500 group-hover:text-emerald-400 shrink-0 transition-colors" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         ) : (
-          /* Conversation Stream */
+          /* Stream of Messages */
           messages.map((msg) => {
             const isUser = msg.sender === 'user';
             return (
               <div
                 key={msg.id}
-                className={`flex gap-2 sm:gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start group animate-in fade-in duration-200`}
+                className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} items-start group animate-in fade-in duration-150`}
               >
-                {/* Avatar */}
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold shadow-md ${
-                    isUser
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-900 border border-emerald-500/30 text-emerald-400'
-                  }`}
-                >
-                  {isUser ? (
-                    'You'
-                  ) : (
-                    <Sparkles className="w-4 h-4 text-emerald-400" />
-                  )}
-                </div>
-
-                {/* Message Box */}
-                <div className={`flex flex-col max-w-[85%] sm:max-w-[78%] ${isUser ? 'items-end' : 'items-start'}`}>
-                  <div className="flex items-center gap-2 mb-1 px-1">
-                    <span className="text-[10px] text-slate-500 font-mono">{msg.timestamp}</span>
-                    {!isUser && (
-                      <button
-                        onClick={() => handleToggleSpeech(msg.id, msg.text)}
-                        className="text-slate-500 hover:text-emerald-400 transition-colors p-0.5"
-                        title="Read aloud"
-                      >
-                        {speakingMsgId === msg.id ? (
-                          <VolumeX className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Volume2 className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    )}
+                {/* AI Avatar icon */}
+                {!isUser && (
+                  <div className="w-7 h-7 rounded-xl bg-slate-900 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400 shadow-xs shadow-emerald-500/10 mt-1">
+                    <Terminal className="w-3.5 h-3.5" />
                   </div>
+                )}
 
+                {/* Message Bubble Container */}
+                <div className={`flex flex-col max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
                   <div
-                    className={`p-3.5 sm:p-4 text-xs leading-relaxed font-sans whitespace-pre-wrap shadow-sm ${
+                    className={`p-3.5 text-xs sm:text-sm leading-relaxed font-sans whitespace-pre-wrap ${
                       isUser
-                        ? 'bg-emerald-600 text-white rounded-2xl rounded-tr-xs font-medium'
-                        : 'bg-slate-900 border border-slate-800/90 text-slate-100 rounded-2xl rounded-tl-xs'
+                        ? 'bg-emerald-600 text-slate-950 font-medium rounded-2xl rounded-tr-xs shadow-md shadow-emerald-600/10'
+                        : 'bg-slate-900/90 border border-slate-800 text-slate-100 rounded-2xl rounded-tl-xs shadow-xs'
                     }`}
                   >
                     {msg.text}
 
-                    {/* WhatsApp Action Card */}
+                    {/* Compact WhatsApp Action Card */}
                     {!isUser && msg.actionType === 'whatsapp_draft' && msg.actionData?.whatsapp && (
                       <div className="mt-3">
                         <WhatsAppCard draft={msg.actionData.whatsapp} />
                       </div>
                     )}
 
-                    {/* Task Created Card */}
+                    {/* Compact Task Created Notification */}
                     {!isUser && msg.actionType === 'create_task' && msg.actionData?.task && (
-                      <div className="mt-3 bg-slate-950/90 border border-emerald-500/30 rounded-2xl p-3.5 space-y-2 text-left">
+                      <div className="mt-3 bg-slate-950/90 border border-emerald-500/30 rounded-xl p-3 space-y-1.5 text-left text-slate-200">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Task Created
+                          <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> [TASK_QUEUED]
                           </span>
-                          <span className="text-[9px] font-bold uppercase bg-slate-800 px-2 py-0.5 rounded-full text-slate-300">
+                          <span className="text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 uppercase">
                             {msg.actionData.task.priority || 'medium'}
                           </span>
                         </div>
                         <p className="text-xs font-bold text-white">{msg.actionData.task.title}</p>
-                        {msg.actionData.task.dueTime && (
-                          <p className="text-[11px] text-slate-400 flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-emerald-400" />
-                            Due: {msg.actionData.task.dueTime}
-                          </p>
-                        )}
                         <button
                           onClick={() => onNavigate('tasks')}
-                          className="mt-1 text-[11px] text-emerald-400 hover:underline font-semibold flex items-center gap-1"
+                          className="text-[11px] text-emerald-400 font-mono font-medium hover:underline flex items-center gap-1 pt-1"
                         >
-                          Open Task Manager <ArrowRight className="w-3 h-3" />
+                          OPEN TASKS <ArrowRight className="w-3 h-3" />
                         </button>
                       </div>
                     )}
 
-                    {/* Memory Saved Card */}
+                    {/* Compact Memory Saved Notification */}
                     {!isUser && msg.actionType === 'add_memory' && msg.actionData?.memory && (
-                      <div className="mt-3 bg-slate-950/90 border border-indigo-500/30 rounded-2xl p-3.5 space-y-2 text-left">
-                        <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Brain className="w-3.5 h-3.5" /> Memory Saved
+                      <div className="mt-3 bg-slate-950/90 border border-emerald-500/30 rounded-xl p-3 space-y-1.5 text-left text-slate-200">
+                        <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                          <Brain className="w-3.5 h-3.5" /> [MEMORY_STORED]
                         </span>
-                        <p className="text-xs font-semibold text-slate-200">
-                          <span className="text-indigo-300">{msg.actionData.memory.key}:</span> {msg.actionData.memory.value}
+                        <p className="text-xs font-medium text-slate-100">
+                          <span className="font-bold text-emerald-400">{msg.actionData.memory.key}:</span> {msg.actionData.memory.value}
                         </p>
                         <button
                           onClick={() => onNavigate('memory')}
-                          className="text-[11px] text-indigo-400 hover:underline font-semibold flex items-center gap-1"
+                          className="text-[11px] text-emerald-400 font-mono font-medium hover:underline flex items-center gap-1 pt-1"
                         >
-                          View Saved Memory <ArrowRight className="w-3 h-3" />
+                          OPEN MEMORY <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Message Tools (Copy, TTS, Timestamp) */}
+                  <div className="flex items-center gap-3 mt-1.5 px-1 text-[10px] text-slate-400 font-mono">
+                    <span>{msg.timestamp}</span>
+
+                    {!isUser && (
+                      <div className="flex items-center gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleCopyText(msg.id, msg.text)}
+                          className="hover:text-emerald-400 transition-colors flex items-center gap-0.5"
+                          title="Copy text"
+                        >
+                          {copiedMsgId === msg.id ? (
+                            <Check className="w-3 h-3 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => handleToggleSpeech(msg.id, msg.text)}
+                          className="hover:text-emerald-400 transition-colors"
+                          title="Read aloud"
+                        >
+                          {speakingMsgId === msg.id ? (
+                            <VolumeX className="w-3 h-3 text-emerald-400" />
+                          ) : (
+                            <Volume2 className="w-3 h-3" />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={handleRegenerate}
+                          className="hover:text-emerald-400 transition-colors"
+                          title="Regenerate response"
+                        >
+                          <RotateCcw className="w-3 h-3" />
                         </button>
                       </div>
                     )}
@@ -362,10 +394,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
           })
         )}
 
+        {/* Typing / Generating Indicator */}
         {isGenerating && (
-          <div className="flex items-center gap-3 text-slate-400 text-xs py-2.5 px-4 bg-slate-900/90 rounded-2xl border border-slate-800 w-fit animate-pulse shadow-sm">
-            <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" />
-            <span className="font-medium text-slate-300">Hamza AI is generating response...</span>
+          <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono py-2 px-3 bg-slate-900/90 rounded-xl w-fit border border-emerald-500/30 animate-pulse">
+            <Terminal className="w-3.5 h-3.5 animate-spin" />
+            <span>PROCESSING COMMAND...</span>
           </div>
         )}
 
@@ -374,11 +407,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Selected File Chip */}
       {selectedFile && (
-        <div className="bg-slate-900 border-x border-slate-800 px-3 py-1.5 flex items-center justify-between text-xs text-slate-300 shrink-0">
+        <div className="bg-slate-900 border border-emerald-500/30 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-200 mb-2 font-mono">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-emerald-400" />
             <span className="truncate max-w-xs">{selectedFile.name}</span>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-400">
               ({(selectedFile.size / 1024).toFixed(1)} KB)
             </span>
           </div>
@@ -391,8 +424,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       )}
 
-      {/* Input Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-b-2xl p-2.5 flex items-end gap-2 shrink-0 shadow-lg relative z-20">
+      {/* Cyber Input Bar */}
+      <div className="p-2.5 bg-slate-900/95 border border-emerald-500/30 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400/30 rounded-2xl shadow-xl flex items-end gap-2 shrink-0 mb-14 transition-all">
         <input
           type="file"
           ref={fileInputRef}
@@ -406,20 +439,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors shrink-0"
-          title="Attach file"
+          className="p-2 rounded-xl text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors shrink-0"
+          title="Attach Payload"
         >
           <Paperclip className="w-4 h-4" />
         </button>
 
         <button
           onClick={toggleMic}
-          className={`p-2.5 rounded-xl transition-colors shrink-0 ${
+          className={`p-2 rounded-xl transition-colors shrink-0 ${
             isListening
               ? 'bg-rose-500 text-white animate-bounce'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
+              : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
           }`}
-          title={isListening ? 'Stop listening' : 'Speak to AI'}
+          title={isListening ? 'Stop listening' : 'Voice input'}
         >
           <Mic className="w-4 h-4" />
         </button>
@@ -428,15 +461,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask Hamza AI (WhatsApp, tasks, memory)..."
+          placeholder="Type command or prompt in Roman Urdu / English..."
           rows={1}
-          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none max-h-24 font-sans leading-relaxed"
+          className="flex-1 bg-transparent text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none resize-none max-h-24 leading-relaxed font-sans py-1.5"
         />
 
         <button
           onClick={() => handleSend()}
           disabled={(!inputText.trim() && !selectedFile) || isGenerating}
-          className="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-bold transition-all shrink-0 shadow-md shadow-emerald-500/20 active:scale-95"
+          className="p-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold disabled:opacity-30 transition-all shrink-0 active:scale-95 shadow-md shadow-emerald-500/20"
         >
           <Send className="w-4 h-4" />
         </button>

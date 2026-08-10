@@ -7,7 +7,6 @@ import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Toast, ToastMessage } from './components/Toast';
 import { WhatsAppModal } from './components/WhatsAppModal';
-import { DashboardView } from './components/DashboardView';
 import { ChatView } from './components/ChatView';
 import { TasksView } from './components/TasksView';
 import { MemoryView } from './components/MemoryView';
@@ -15,8 +14,9 @@ import { ToolsView } from './components/ToolsView';
 import { SettingsView } from './components/SettingsView';
 
 export default function App() {
-  const [navTab, setNavTab] = useState<NavTab>('dashboard');
+  const [navTab, setNavTab] = useState<NavTab>('chat');
   const [isMobileFrame, setIsMobileFrame] = useState<boolean>(true);
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
 
   // Core state loaded from local storage
   const [settings, setSettings] = useState<UserSettings>(() => storage.getSettings());
@@ -33,7 +33,6 @@ export default function App() {
   // Sync state changes to storage
   useEffect(() => {
     storage.saveSettings(settings);
-    // Apply dark/light class to root document element
     if (settings.theme === 'light') {
       document.documentElement.classList.remove('dark');
     } else {
@@ -78,17 +77,17 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
     setTasks((prev) => [newTask, ...prev]);
-    showToast('Task Created', `"${newTask.title}" added to tasks.`);
+    showToast('Task Queued', `"${newTask.title}" added to active tasks.`);
   };
 
   const handleUpdateTask = (updatedTask: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
-    showToast('Task Updated', `"${updatedTask.title}" updated.`);
+    showToast('Task Updated', `"${updatedTask.title}" synchronized.`);
   };
 
   const handleDeleteTask = (taskId: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    showToast('Task Deleted', undefined, 'info');
+    showToast('Task Purged', undefined, 'info');
   };
 
   const handleToggleTaskStatus = (taskId: string) => {
@@ -97,7 +96,7 @@ export default function App() {
         if (t.id === taskId) {
           const nextStatus = t.status === 'completed' ? 'pending' : 'completed';
           if (nextStatus === 'completed') {
-            showToast('Task Completed! 🎉', `"${t.title}" marked completed.`);
+            showToast('Task Executed', `"${t.title}" marked complete.`);
           }
           return { ...t, status: nextStatus };
         }
@@ -114,17 +113,17 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
     setMemories((prev) => [newMem, ...prev]);
-    showToast('Memory Saved', `"${newMem.key}" added to memory.`);
+    showToast('Memory Encrypted', `"${newMem.key}" saved to memory core.`);
   };
 
   const handleUpdateMemory = (updatedMem: Memory) => {
     setMemories((prev) => prev.map((m) => (m.id === updatedMem.id ? updatedMem : m)));
-    showToast('Memory Updated');
+    showToast('Memory Core Updated');
   };
 
   const handleDeleteMemory = (memoryId: string) => {
     setMemories((prev) => prev.filter((m) => m.id !== memoryId));
-    showToast('Memory Removed', undefined, 'info');
+    showToast('Memory Purged', undefined, 'info');
   };
 
   // WhatsApp Draft Actions
@@ -132,37 +131,49 @@ export default function App() {
     setWhatsappDrafts((prev) =>
       prev.map((d) => (d.id === draftId ? { ...d, messageText: updatedText, status: 'sent' } : d))
     );
-    showToast('WhatsApp Text Prepared', 'Opening WhatsApp app...');
+    showToast('Payload Ready', 'Launching WhatsApp client...');
   };
 
   // Conversation & AI Actions
   const handleNewConversation = () => {
     const newConv: Conversation = {
       id: 'conv-' + Date.now(),
-      title: 'Chat ' + (conversations.length + 1),
+      title: 'Session ' + (conversations.length + 1),
       createdAt: new Date().toISOString(),
       lastMessageAt: new Date().toISOString(),
-      messages: [
-        {
-          id: 'msg-start',
-          sender: 'assistant',
-          text: `Assalam-o-Alaikum ${settings.userName || 'Hamza'}! Main Hamza AI hoon. Aaj main aapki kya madad kar sakta hoon?`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ],
+      messages: [],
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newConv.id);
-    showToast('New Chat Started');
+    showToast('New Session Initialized');
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    const updated = conversations.filter((c) => c.id !== id);
+    if (updated.length === 0) {
+      handleNewConversation();
+    } else {
+      setConversations(updated);
+      if (activeConversationId === id) {
+        setActiveConversationId(updated[0].id);
+      }
+    }
+    showToast('Session Logs Cleared', undefined, 'info');
   };
 
   const handleSendMessage = async (text: string, attachment?: File) => {
-    const activeConv = conversations.find((c) => c.id === activeConversationId) || conversations[0];
-    if (!activeConv) return;
+    let activeConv = conversations.find((c) => c.id === activeConversationId);
+    if (!activeConv) {
+      activeConv = conversations[0];
+      if (!activeConv) {
+        handleNewConversation();
+        return;
+      }
+    }
 
     let fullPromptText = text;
     if (attachment) {
-      fullPromptText += ` [Attached File: ${attachment.name}]`;
+      fullPromptText += ` [Attachment: ${attachment.name}]`;
     }
 
     const userMsg: Message = {
@@ -174,7 +185,6 @@ export default function App() {
 
     const updatedMessages = [...activeConv.messages, userMsg];
 
-    // Update state immediately
     setConversations((prev) =>
       prev.map((c) =>
         c.id === activeConv.id
@@ -182,7 +192,7 @@ export default function App() {
               ...c,
               lastMessageAt: new Date().toISOString(),
               messages: updatedMessages,
-              title: c.messages.length === 1 ? text.slice(0, 24) + '...' : c.title,
+              title: c.messages.length === 0 ? text.slice(0, 24) + '...' : c.title,
             }
           : c
       )
@@ -204,11 +214,10 @@ export default function App() {
       });
 
       const data: any = await response.json();
-      const replyText = data.replyText || 'Ji, main samajh gaya hoon.';
+      const replyText = data.replyText || 'Command processed.';
       const actionType = data.actionType || 'none';
       const actionData = data.actionData || {};
 
-      // Execute side effects if AI triggered an action
       if (actionType === 'create_task' && actionData.task && actionData.task.title) {
         const newTask: Task = {
           id: 'task-' + Date.now(),
@@ -222,7 +231,7 @@ export default function App() {
           createdAt: new Date().toISOString(),
         };
         setTasks((prev) => [newTask, ...prev]);
-        showToast('Task Created by AI', `"${newTask.title}"`);
+        showToast('Task Queued', `"${newTask.title}"`);
       } else if (actionType === 'complete_task' && actionData.targetTaskId) {
         handleToggleTaskStatus(actionData.targetTaskId);
       } else if (actionType === 'add_memory' && actionData.memory && actionData.memory.key) {
@@ -235,7 +244,7 @@ export default function App() {
           createdAt: new Date().toISOString(),
         };
         setMemories((prev) => [newMem, ...prev]);
-        showToast('Memory Saved by AI', `"${newMem.key}"`);
+        showToast('Memory Stored', `"${newMem.key}"`);
       } else if (actionType === 'whatsapp_draft' && actionData.whatsapp) {
         const newDraft: WhatsAppDraft = {
           id: 'draft-' + Date.now(),
@@ -245,7 +254,7 @@ export default function App() {
           createdAt: new Date().toISOString(),
         };
         setWhatsappDrafts((prev) => [newDraft, ...prev]);
-        showToast('WhatsApp Draft Ready', 'Preview available in Chat.');
+        showToast('WhatsApp Payload Ready', 'Preview in Chat.');
       }
 
       const aiMsg: Message = {
@@ -268,7 +277,7 @@ export default function App() {
       const errorMsg: Message = {
         id: 'msg-err-' + Date.now(),
         sender: 'assistant',
-        text: 'Apologies, server connection error. Please try again.',
+        text: '[SYS_ERR] Transmission interrupted. Please re-send query.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setConversations((prev) =>
@@ -296,52 +305,33 @@ export default function App() {
   const pendingTasksCount = tasks.filter((t) => t.status === 'pending').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col selection:bg-emerald-500 selection:text-slate-950">
-      {/* Top Header */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col selection:bg-emerald-500 selection:text-slate-950 transition-colors">
+      {/* Header */}
       <Header
         settings={settings}
         onUpdateSettings={setSettings}
         isMobileFrame={isMobileFrame}
         onToggleMobileFrame={() => setIsMobileFrame(!isMobileFrame)}
+        onNewChat={handleNewConversation}
+        onToggleHistoryDrawer={() => setShowHistoryDrawer(!showHistoryDrawer)}
       />
 
-      {/* Main Container Wrapper (Responsive / Mobile Frame) */}
-      <main className="flex-1 w-full flex justify-center py-2 px-2 sm:px-4">
+      {/* Main Content Area */}
+      <main className="flex-1 w-full flex justify-center py-2 px-2 sm:px-4 bg-radial from-slate-900/60 via-slate-950 to-slate-950">
         <div
-          className={`w-full transition-all duration-300 ${
+          className={`w-full transition-all duration-200 ${
             isMobileFrame
-              ? 'max-w-md bg-slate-950/90 border border-slate-800/80 rounded-3xl p-3 sm:p-4 shadow-2xl min-h-[calc(100vh-5rem)]'
-              : 'max-w-4xl p-2 sm:p-4'
+              ? 'max-w-md bg-slate-900/80 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-2 sm:p-4 shadow-2xl shadow-emerald-950/40 min-h-[calc(100vh-5rem)]'
+              : 'max-w-3xl p-2 sm:p-4'
           }`}
         >
-          {/* View Routing */}
-          {navTab === 'dashboard' && (
-            <DashboardView
-              settings={settings}
-              tasks={tasks}
-              memories={memories}
-              onNavigate={setNavTab}
-              onOpenQuickTaskModal={() => setNavTab('tasks')}
-              onOpenQuickMemoryModal={() => setNavTab('memory')}
-              onToggleTaskStatus={handleToggleTaskStatus}
-              onOpenWhatsAppDraftModal={() =>
-                setActiveWhatsAppModalDraft({
-                  id: 'draft-quick-test',
-                  recipientName: 'Ali',
-                  messageText: 'Assalam-o-Alaikum Ali, meeting shaam 5 baje confirm hai.',
-                  status: 'draft',
-                  createdAt: new Date().toISOString(),
-                })
-              }
-            />
-          )}
-
           {navTab === 'chat' && (
             <ChatView
               conversations={conversations}
               activeConversationId={activeConversationId}
               onSelectConversation={setActiveConversationId}
               onNewConversation={handleNewConversation}
+              onDeleteConversation={handleDeleteConversation}
               onSendMessage={handleSendMessage}
               isGenerating={isGenerating}
               tasks={tasks}
@@ -349,6 +339,8 @@ export default function App() {
               onOpenWhatsAppModal={setActiveWhatsAppModalDraft}
               onNavigate={setNavTab}
               settings={settings}
+              showHistoryDrawer={showHistoryDrawer}
+              onCloseHistoryDrawer={() => setShowHistoryDrawer(false)}
             />
           )}
 
@@ -390,22 +382,21 @@ export default function App() {
         </div>
       </main>
 
-      {/* WhatsApp Draft Preview Modal */}
+      {/* WhatsApp Modal */}
       <WhatsAppModal
         draft={activeWhatsAppModalDraft}
         onClose={() => setActiveWhatsAppModalDraft(null)}
         onSendConfirm={handleSendWhatsAppConfirm}
       />
 
-      {/* Global Toast Notifications */}
+      {/* Toast Notifications */}
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      {/* Mobile-first Bottom Navigation Bar */}
+      {/* Bottom Navigation */}
       <BottomNav
         activeTab={navTab}
         onTabChange={setNavTab}
         pendingTasksCount={pendingTasksCount}
-        memoriesCount={memories.length}
       />
     </div>
   );

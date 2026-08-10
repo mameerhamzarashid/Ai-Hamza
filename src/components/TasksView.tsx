@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { 
-  CheckSquare, Plus, Search, Calendar, Clock, AlertCircle, 
-  Trash2, Edit3, CheckCircle2, Circle, Filter, Sparkles, X 
+  CheckSquare, Plus, Search, Calendar, Clock, 
+  Trash2, Edit3, CheckCircle2, Circle, Sparkles, X, Terminal 
 } from 'lucide-react';
-import { Task, Priority, TaskStatus } from '../types';
+import { Task, Priority } from '../types';
 
 interface TasksViewProps {
   tasks: Task[];
@@ -27,7 +27,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-  // Modal Form State
+  // Form State
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
@@ -101,7 +101,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setIsParsing(false);
   };
 
-  // Filtering Logic
   const todayStr = new Date().toISOString().split('T')[0];
 
   const filteredTasks = tasks.filter((t) => {
@@ -120,25 +119,25 @@ export const TasksView: React.FC<TasksViewProps> = ({
   });
 
   return (
-    <div className="space-y-4 pb-24 animate-in fade-in duration-200">
-      {/* Header & Add Button */}
+    <div className="space-y-4 pb-24 animate-in fade-in duration-200 font-sans">
+      {/* Top Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2 font-mono">
             <CheckSquare className="w-5 h-5 text-emerald-400" />
-            Task Manager
+            TASK_ENGINE
           </h2>
-          <p className="text-xs text-slate-400">
-            Organize & schedule your daily tasks in Urdu or English
+          <p className="text-xs text-slate-400 font-mono">
+            Active task schedule & reminders
           </p>
         </div>
 
         <button
           onClick={openAddModal}
-          className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
+          className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all"
         >
-          <Plus className="w-4 h-4" />
-          Add Task
+          <Plus className="w-4 h-4 stroke-[3]" />
+          ADD TASK
         </button>
       </div>
 
@@ -151,25 +150,24 @@ export const TasksView: React.FC<TasksViewProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tasks..."
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 font-mono"
           />
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none font-mono">
           {[
-            { id: 'all', label: 'All' },
-            { id: 'today', label: 'Today' },
-            { id: 'upcoming', label: 'Upcoming' },
-            { id: 'high', label: 'High Priority' },
-            { id: 'completed', label: 'Completed' },
+            { id: 'all', label: '[ALL]' },
+            { id: 'today', label: '[TODAY]' },
+            { id: 'upcoming', label: '[UPCOMING]' },
+            { id: 'high', label: '[HIGH_PRIO]' },
+            { id: 'completed', label: '[COMPLETED]' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setFilterTab(tab.id as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all ${
+              className={`px-3 py-1 rounded-xl text-xs font-bold shrink-0 transition-all ${
                 filterTab === tab.id
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-xs shadow-emerald-500/10'
                   : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'
               }`}
             >
@@ -179,14 +177,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
         </div>
       </div>
 
-      {/* Task Cards List */}
-      <div className="space-y-2.5">
+      {/* Tasks List */}
+      <div className="space-y-2">
         {filteredTasks.length === 0 ? (
-          <div className="text-center py-10 bg-slate-900/60 rounded-2xl border border-slate-800">
-            <CheckSquare className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-            <p className="text-xs font-semibold text-slate-300">No tasks found</p>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Add a task manually or ask Hamza AI in chat!
+          <div className="text-center py-10 bg-slate-900/60 rounded-2xl border border-slate-800 font-mono">
+            <CheckSquare className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+            <p className="text-xs font-bold text-slate-300">NO MATCHING TASKS</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Queue a task above or command Hamza AI in chat.
             </p>
           </div>
         ) : (
@@ -198,19 +196,19 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 className={`p-3.5 rounded-2xl border transition-all ${
                   isDone
                     ? 'bg-slate-950/40 border-slate-800/50 opacity-60'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                    : 'bg-slate-900/80 border-slate-800 hover:border-emerald-500/30'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex items-start gap-2.5 min-w-0">
                     <button
                       onClick={() => onToggleTaskStatus(task.id)}
-                      className="mt-0.5 text-slate-400 hover:text-emerald-400 transition-colors shrink-0"
+                      className="mt-0.5 text-slate-500 hover:text-emerald-400 transition-colors shrink-0"
                     >
                       {isDone ? (
                         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                       ) : (
-                        <Circle className="w-5 h-5 text-slate-500" />
+                        <Circle className="w-5 h-5 text-slate-500 hover:text-emerald-400" />
                       )}
                     </button>
 
@@ -224,26 +222,26 @@ export const TasksView: React.FC<TasksViewProps> = ({
                       </h4>
 
                       {task.notes && (
-                        <p className="text-[11px] text-slate-400 mt-1 leading-snug line-clamp-2">
+                        <p className="text-[11px] text-slate-400 mt-0.5 leading-snug line-clamp-2">
                           {task.notes}
                         </p>
                       )}
 
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 mt-2">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400 font-mono mt-1.5">
                         {task.dueDate && (
                           <span className="flex items-center gap-1 text-slate-300">
-                            <Calendar className="w-3 h-3 text-slate-500" />
+                            <Calendar className="w-3 h-3 text-emerald-400" />
                             {task.dueDate}
                           </span>
                         )}
                         {task.dueTime && (
-                          <span className="flex items-center gap-1 text-emerald-400 font-mono">
+                          <span className="flex items-center gap-1 text-emerald-400">
                             <Clock className="w-3 h-3" />
                             {task.dueTime}
                           </span>
                         )}
                         {task.category && (
-                          <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-950 text-slate-300 border border-slate-800 font-semibold">
                             {task.category}
                           </span>
                         )}
@@ -251,13 +249,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0 font-mono">
                     <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase ${
                         task.priority === 'high'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
                           : task.priority === 'medium'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                           : 'bg-slate-800 text-slate-400'
                       }`}
                     >
@@ -266,13 +264,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
                     <button
                       onClick={() => openEditModal(task)}
-                      className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                      className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => onDeleteTask(task.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800"
+                      className="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -286,11 +284,12 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
       {/* Add / Edit Task Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white">
-                {editingTask ? 'Edit Task' : 'Create New Task'}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-slate-900 border border-emerald-500/30 w-full max-w-md rounded-2xl shadow-2xl p-4 space-y-3 font-sans">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 font-mono">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Terminal className="w-4 h-4 text-emerald-400" />
+                {editingTask ? 'EDIT_TASK' : 'CREATE_TASK'}
               </h3>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -300,11 +299,10 @@ export const TasksView: React.FC<TasksViewProps> = ({
               </button>
             </div>
 
-            {/* AI Natural Language Quick Parse Input */}
             {!editingTask && (
-              <div className="bg-emerald-950/30 border border-emerald-500/30 p-3 rounded-xl space-y-2">
+              <div className="bg-slate-950 border border-emerald-500/30 p-2.5 rounded-xl space-y-1.5 font-mono">
                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Quick Parse in Urdu/English
+                  <Sparkles className="w-3 h-3" /> NATURAL_LANG_PARSER
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -312,55 +310,55 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     value={naturalInput}
                     onChange={(e) => setNaturalInput(e.target.value)}
                     placeholder='e.g. "Kal 5 baje Ali ko call karna hai"'
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs text-white focus:outline-none focus:border-emerald-500"
                   />
                   <button
                     onClick={handleNaturalParse}
                     disabled={isParsing}
-                    className="px-3 py-1.5 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400 disabled:opacity-50"
+                    className="px-2.5 py-1 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-emerald-400 disabled:opacity-50"
                   >
-                    {isParsing ? 'Parsing...' : 'Parse'}
+                    {isParsing ? '...' : 'PARSE'}
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-2.5 text-left">
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-                  Task Title *
+                <label className="text-[10px] font-bold text-slate-400 font-mono uppercase block mb-1">
+                  TITLE *
                 </label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Call Ahmed regarding project"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="Task title"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-                  Notes / Details
+                <label className="text-[10px] font-bold text-slate-400 font-mono uppercase block mb-1">
+                  NOTES
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Additional instructions..."
+                  placeholder="Additional parameters / notes..."
                   rows={2}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 font-mono">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-                    Priority
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                    PRIORITY
                   </label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as Priority)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -369,59 +367,58 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-                    Category
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                    CATEGORY
                   </label>
                   <input
                     type="text"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    placeholder="Work, Personal..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 font-mono">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-                    Due Date
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                    DUE_DATE
                   </label>
                   <input
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-400 uppercase block mb-1">
-                    Due Time
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                    DUE_TIME
                   </label>
                   <input
                     type="time"
                     value={dueTime}
                     onChange={(e) => setDueTime(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 font-mono">
               <button
                 onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl"
+                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded-xl"
               >
-                Cancel
+                CANCEL
               </button>
               <button
                 onClick={handleSave}
                 disabled={!title.trim()}
-                className="px-4 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl disabled:opacity-50"
+                className="px-3.5 py-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl disabled:opacity-50"
               >
-                {editingTask ? 'Update Task' : 'Save Task'}
+                SAVE
               </button>
             </div>
           </div>
