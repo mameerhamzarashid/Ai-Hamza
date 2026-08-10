@@ -7,6 +7,7 @@ import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Toast, ToastMessage } from './components/Toast';
 import { WhatsAppModal } from './components/WhatsAppModal';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { HomeView } from './components/HomeView';
 import { CreateView } from './components/CreateView';
 import { ChatView } from './components/ChatView';
@@ -483,6 +484,9 @@ export default function App() {
 
       {/* Toast Notifications */}
       <Toast toast={toast} onClose={() => setToast(null)} />
+
+      {/* PWA Install Banner */}
+      <PWAInstallPrompt />
 
       {/* Bottom Navigation */}
       <BottomNav

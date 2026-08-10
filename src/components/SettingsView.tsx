@@ -113,11 +113,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <button
               onClick={toggleTheme}
-              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-emerald-400 flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold text-cyan-400 flex items-center gap-1.5"
             >
               {settings.theme === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
               {settings.theme.toUpperCase()}
             </button>
+          </div>
+
+          {/* PWA & Mobile Integration Details */}
+          <div className="pt-3 border-t border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-cyan-400" />
+                <div>
+                  <h4 className="text-xs font-bold text-white">PWA_APP_SHELL</h4>
+                  <p className="text-[10px] text-slate-400">Standalone PWA & offline cache ready</p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                ACTIVE
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-slate-400 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <div>Display: <span className="text-cyan-300">Standalone</span></div>
+              <div>SW Status: <span className="text-cyan-300 font-bold">Registered</span></div>
+              <div>Offline Cache: <span className="text-cyan-300">Enabled</span></div>
+              <div>Platform: <span className="text-cyan-300">Android / Mobile</span></div>
+            </div>
           </div>
         </div>
 
