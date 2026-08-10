@@ -10,7 +10,7 @@ const STORAGE_KEYS = {
 };
 
 const INITIAL_SETTINGS: UserSettings = {
-  assistantName: 'Hamza AI',
+  assistantName: 'CYGNUS AI',
   userName: 'Hamza',
   language: 'roman_urdu',
   theme: 'dark',
@@ -84,7 +84,7 @@ const INITIAL_MEMORIES: Memory[] = [
     id: 'mem-4',
     category: 'project',
     key: 'Active Project',
-    value: 'Hamza AI Assistant Prototype Development',
+    value: 'CYGNUS AI Personal Agent Development',
     source: 'ai_detected',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
@@ -178,7 +178,7 @@ const INITIAL_CONVERSATION: Conversation = {
     {
       id: 'msg-1',
       sender: 'assistant',
-      text: 'Assalam-o-Alaikum Hamza! Main apka personal AI assistant **Hamza AI** hoon. Main apke daily tasks, reminders, memories aur message drafts manage kar sakta hoon.\n\nAap Roman Urdu ya English mein bol sakte hain, jaise:\n• *"Kal 5 baje Ali ko call karna hai."*\n• *"Mere pending tasks dikhao."*\n• *"Ali ko WhatsApp message likho ke meeting kal hai."*',
+      text: 'Assalam-o-Alaikum Hamza! I am **CYGNUS AI** — your personal AI agent. Main aapke coding projects, web research, daily tasks, reminders, memories aur message drafts manage karne ke liye tayyar hoon.\n\nAap Roman Urdu, Urdu, Hindi ya English mein baat kar sakte hain, jaise:\n• *"CYGNUS, mere pending tasks dikhao aur priority summarize karo."*\n• *"Web research karo latest features par."*\n• *"Ali ko WhatsApp message draft karo meeting ke liye."*',
       timestamp: new Date(Date.now() - 300000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ],

@@ -7,6 +7,8 @@ import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Toast, ToastMessage } from './components/Toast';
 import { WhatsAppModal } from './components/WhatsAppModal';
+import { HomeView } from './components/HomeView';
+import { CreateView } from './components/CreateView';
 import { ChatView } from './components/ChatView';
 import { TasksView } from './components/TasksView';
 import { MemoryView } from './components/MemoryView';
@@ -14,7 +16,7 @@ import { ToolsView } from './components/ToolsView';
 import { SettingsView } from './components/SettingsView';
 
 export default function App() {
-  const [navTab, setNavTab] = useState<NavTab>('chat');
+  const [navTab, setNavTab] = useState<NavTab>('home');
   const [isMobileFrame, setIsMobileFrame] = useState<boolean>(true);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
 
@@ -361,10 +363,17 @@ export default function App() {
     window.location.reload();
   };
 
+  const handleQuickActionPrompt = (promptText: string, targetTab: NavTab = 'chat') => {
+    setNavTab(targetTab);
+    if (targetTab === 'chat' && promptText) {
+      handleSendMessage(promptText);
+    }
+  };
+
   const pendingTasksCount = tasks.filter((t) => t.status === 'pending').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col selection:bg-emerald-500 selection:text-slate-950 transition-colors">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased flex flex-col selection:bg-cyan-500 selection:text-slate-950 transition-colors">
       {/* Header */}
       <Header
         settings={settings}
@@ -380,10 +389,33 @@ export default function App() {
         <div
           className={`w-full transition-all duration-200 ${
             isMobileFrame
-              ? 'max-w-md bg-slate-900/80 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-2 sm:p-4 shadow-2xl shadow-emerald-950/40 min-h-[calc(100vh-5rem)]'
-              : 'max-w-3xl p-2 sm:p-4'
+              ? 'max-w-md bg-slate-900/80 backdrop-blur-xl border border-cyan-500/20 rounded-3xl p-2 sm:p-4 shadow-2xl shadow-cyan-950/40 min-h-[calc(100vh-5rem)]'
+              : 'max-w-4xl p-2 sm:p-4'
           }`}
         >
+          {navTab === 'home' && (
+            <HomeView
+              userName={settings.userName}
+              onNavigate={setNavTab}
+              onQuickActionPrompt={handleQuickActionPrompt}
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              onSelectConversation={setActiveConversationId}
+              tasks={tasks}
+              memories={memories}
+            />
+          )}
+
+          {navTab === 'create' && (
+            <CreateView
+              onSendToChat={(promptText) => {
+                setNavTab('chat');
+                handleSendMessage(promptText);
+              }}
+              onNavigate={setNavTab}
+            />
+          )}
+
           {navTab === 'chat' && (
             <ChatView
               conversations={conversations}

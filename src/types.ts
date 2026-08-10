@@ -127,4 +127,4 @@ export interface UserSettings {
   autoSpeech: boolean;
 }
 
-export type NavTab = 'chat' | 'tasks' | 'memory' | 'tools' | 'settings';
+export type NavTab = 'home' | 'chat' | 'create' | 'tasks' | 'memory' | 'tools' | 'settings';

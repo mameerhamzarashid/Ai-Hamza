@@ -1,6 +1,6 @@
 {
-  "name": "Hamza AI",
-  "description": "Mobile-first Personal AI Assistant with Roman Urdu & English natural language understanding, smart task management, memory tracking, and tool draft previews.",
+  "name": "CYGNUS AI",
+  "description": "CYGNUS AI — Hamza's personal AI agent for coding, web research, smart task management, memory tracking, and tool workflows.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
