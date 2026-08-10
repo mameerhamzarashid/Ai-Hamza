@@ -17,7 +17,7 @@ function getGenAI(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
     return null;
-  }
+}
   if (!genAIClient) {
     genAIClient = new GoogleGenAI({
       apiKey: apiKey.trim(),
@@ -29,6 +29,19 @@ function getGenAI(): GoogleGenAI | null {
     });
   }
   return genAIClient;
+}
+
+function parseGeminiJson(rawText: string | undefined): any {
+  if (!rawText) return {};
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  }
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return {};
+  }
 }
 
 // Health check endpoint
@@ -277,7 +290,7 @@ You MUST output valid JSON matching this schema:
       },
     });
 
-    const parsed = JSON.parse(response.text || '{}');
+    const parsed = parseGeminiJson(response.text);
     res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/chat:', error);
@@ -331,7 +344,7 @@ Command: "${command}"`,
       },
     });
 
-    const parsed = JSON.parse(response.text || '{}');
+    const parsed = parseGeminiJson(response.text);
     res.json(parsed);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

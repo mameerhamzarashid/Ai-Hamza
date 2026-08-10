@@ -5,19 +5,55 @@ export interface Env {
   ASSETS: Fetcher;
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json',
+};
+
 function getGenAI(env?: Env): GoogleGenAI | null {
-  const apiKey = env?.GEMINI_API_KEY;
+  let apiKey = env?.GEMINI_API_KEY;
+  if (!apiKey && typeof process !== 'undefined' && process?.env?.GEMINI_API_KEY) {
+    apiKey = process.env.GEMINI_API_KEY;
+  }
   if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
     return null;
   }
+  apiKey = apiKey.trim().replace(/^["']|["']$/g, '');
+  if (!apiKey) return null;
+
   return new GoogleGenAI({
-    apiKey: apiKey.trim(),
+    apiKey,
   });
+}
+
+function parseGeminiJson(rawText: string | undefined): any {
+  if (!rawText) return {};
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  }
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return {};
+  }
 }
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // ---------------------------
+    // CORS PREFLIGHT
+    // ---------------------------
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders,
+      });
+    }
 
     // ---------------------------
     // HEALTH CHECK
@@ -32,7 +68,7 @@ export default {
             ? 'Gemini API is connected and configured.'
             : 'GEMINI_API_KEY secret is not configured in Cloudflare Worker environment.',
         }),
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       );
     }
 
@@ -47,7 +83,7 @@ export default {
         if (!message || typeof message !== 'string') {
           return new Response(
             JSON.stringify({ error: 'Message string is required' }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
+            { status: 400, headers: corsHeaders }
           );
         }
 
@@ -169,7 +205,7 @@ You MUST output valid JSON matching this schema:
 
           return new Response(
             JSON.stringify({ replyText, actionType, actionData, apiNotConfigured: true }),
-            { headers: { 'Content-Type': 'application/json' } }
+            { headers: corsHeaders }
           );
         }
 
@@ -277,9 +313,9 @@ You MUST output valid JSON matching this schema:
           },
         });
 
-        const parsed = JSON.parse(response.text || '{}');
+        const parsed = parseGeminiJson(response.text);
         return new Response(JSON.stringify(parsed), {
-          headers: { 'Content-Type': 'application/json' },
+          headers: corsHeaders,
         });
       } catch (error: any) {
         return new Response(
@@ -288,7 +324,7 @@ You MUST output valid JSON matching this schema:
             actionType: 'none',
             error: error.message,
           }),
-          { status: 500, headers: { 'Content-Type': 'application/json' } }
+          { status: 500, headers: corsHeaders }
         );
       }
     }
@@ -303,7 +339,7 @@ You MUST output valid JSON matching this schema:
         if (!command) {
           return new Response(
             JSON.stringify({ error: 'Command text is required' }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
+            { status: 400, headers: corsHeaders }
           );
         }
 
@@ -319,7 +355,7 @@ You MUST output valid JSON matching this schema:
               dueTime: '17:00',
               category: 'General',
             }),
-            { headers: { 'Content-Type': 'application/json' } }
+            { headers: corsHeaders }
           );
         }
 
@@ -343,14 +379,14 @@ You MUST output valid JSON matching this schema:
           },
         });
 
-        const parsed = JSON.parse(response.text || '{}');
+        const parsed = parseGeminiJson(response.text);
         return new Response(JSON.stringify(parsed), {
-          headers: { 'Content-Type': 'application/json' },
+          headers: corsHeaders,
         });
       } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), {
           status: 500,
-          headers: { 'Content-Type': 'application/json' },
+          headers: corsHeaders,
         });
       }
     }
@@ -365,7 +401,7 @@ You MUST output valid JSON matching this schema:
         if (!query) {
           return new Response(
             JSON.stringify({ error: 'Query is required' }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
+            { status: 400, headers: corsHeaders }
           );
         }
 
@@ -376,7 +412,7 @@ You MUST output valid JSON matching this schema:
               summary: `Web research simulation for: "${query}". Please configure GEMINI_API_KEY in Cloudflare Worker secrets for live search grounding.`,
               sources: [],
             }),
-            { headers: { 'Content-Type': 'application/json' } }
+            { headers: corsHeaders }
           );
         }
 
@@ -399,23 +435,30 @@ You MUST output valid JSON matching this schema:
             summary: response.text,
             sources,
           }),
-          { headers: { 'Content-Type': 'application/json' } }
+          { headers: corsHeaders }
         );
       } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), {
           status: 500,
-          headers: { 'Content-Type': 'application/json' },
+          headers: corsHeaders,
         });
       }
     }
 
     // ---------------------------
-    // 4. STATIC ASSETS SERVING
+    // 4. STATIC ASSETS SERVING & SPA FALLBACK
     // ---------------------------
     if (env.ASSETS) {
       const res = await env.ASSETS.fetch(request);
       if (res.status !== 404) {
         return res;
+      }
+      // If an API route was requested but not matched above, return 404 JSON instead of HTML SPA page
+      if (url.pathname.startsWith('/api/')) {
+        return new Response(
+          JSON.stringify({ error: `API route not found: ${url.pathname}` }),
+          { status: 404, headers: corsHeaders }
+        );
       }
       // SPA Fallback for client routes
       const indexReq = new Request(new URL('/index.html', request.url), request);
